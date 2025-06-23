@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Postscope - Visualization</title>
+    <link rel="stylesheet" type="text/css" href="./style.css">
+</head>
+<body class="font-sans antialiased text-slate-800 bg-slate-50">
+    <div class="main-container flex h-screen w-screen overflow-hidden">
+        
+        <!-- Controls Panel (Left) -->
+        <aside class="controls-panel w-[400px] bg-white border-r border-slate-200 flex flex-col shadow-lg z-10">
+            
+            <!-- Header & Main Controls (Non-scrolling part) -->
+            <div class="p-6 shrink-0 space-y-6">
+                <header>
+                    <h1 class="text-2xl font-bold text-sky-600 tracking-tight">
+                        <a href="index.html" class="hover:text-sky-700 transition-colors">Postscope</a>
+                    </h1>
+                </header>
+                
+                <!-- Ensure this element is present for the UI controller -->
+                <div id="visualization-title-area" class="relative -mt-2"></div>
+                
+                <div id="source-info" class="text-sm text-slate-700"></div>
+                
+                <div class="space-y-4">
+                    <div class="control-group">
+                        <label for="min-cluster-size" class="block text-sm font-medium text-slate-700 mb-1">Minimum Cluster Size</label>
+                        <input id="min-cluster-size" type="number" value="5" min="1" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"/>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <!--  Added flexbox centering to buttons -->
+                        <button id="recluster-button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors">Update Clusters</button>
+                        <button id="toggle-labels-button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-slate-300 rounded-md font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors">Hide Point Labels</button>
+                    </div>
+                </div>
+                 <div id="status-area"></div>
+            </div>
+
+            <!-- Scrollable Area for cluster list -->
+            <div class="flex-1 overflow-y-auto px-6 border-t border-slate-200">
+                <div id="cluster-manager" class="py-6">
+                    <label class="block text-sm font-semibold text-slate-800 mb-3">Clusters</label>
+                    <div id="cluster-list-container" class="space-y-1"></div>
+                </div>
+            </div>
+
+            <!-- Query Input (Footer, non-scrolling) -->
+            <div class="p-6 border-t border-slate-200 shrink-0">
+                <label for="query-input" class="block text-sm font-medium text-slate-700 mb-1">Find Your Own Text</label>
+                <textarea id="query-input" placeholder="Type or paste text to see where it lands on the map..." class="w-full h-24 px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+                ></textarea>
+            </div>
+        </aside>
+
+        <!-- Visualization Panel (Right) -->
+        <main class="visualization-panel flex-1 flex flex-col bg-slate-100">
+            <!-- Map takes up remaining space -->
+            <div id="visualization-container" class="flex-1 relative min-h-0"></div>
+            
+            <!-- Response list appears here, below the map -->
+            <div id="response-list-container" class="hidden"></div>
+        </main>
+
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>

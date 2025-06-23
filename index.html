@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="./style.css">
+    <title>Postscope - Twitter/X Visualization Tool</title>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+    <div class="container mx-auto px-4 py-8 sm:py-12 max-w-4xl">
+        
+        <header class="text-center mb-10 sm:mb-12">
+            <h1 class="text-4xl sm:text-5xl font-bold text-sky-600 tracking-tight">Postscope</h1>
+            <p class="mt-3 text-lg text-slate-600 max-w-2xl mx-auto">See the hidden groups in any Twitter/X post's replies, profile, or timeline.</p>
+        </header>
+
+        <button id="toggle-instructions-btn" class="mx-auto mb-8 flex items-center text-sm font-semibold text-sky-600 hover:text-sky-700" style="display: none;">
+            Show Instructions
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </button>
+
+        <div id="instructions-content" class="mb-10 sm:mb-12" style="display: none;">
+            <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 sm:p-8">
+                <div class="text-center">
+                    <h2 class="text-2xl font-bold text-slate-800">Get Started</h2>
+                    <p class="mt-2 text-slate-600">Drag this button to your browser's bookmarks bar.</p>
+                    <a id="bookmarklet" href="" class="inline-block mt-4 px-6 py-3 bg-sky-500 text-white font-bold rounded-lg shadow-md hover:bg-sky-600 transition-all cursor-move">Postscope it!</a>
+                </div>
+                <div class="mt-8 text-slate-700">
+                    <ol class="list-decimal list-inside space-y-3">
+                        <li><strong>Drag the 'Postscope it!' button</strong> to your bookmarks bar.</li>
+                        <li>Navigate to an X (Twitter) post, a user profile, or your home timeline.</li>
+                        <li>Click the 'Postscope it!' bookmarklet you just saved.</li>
+                        <li>The page will scroll to collect posts. Click "Stop & Visualize" when ready.</li>
+                        <li>Your analysis will appear below.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-6">
+            <!-- Global Controls for Import/Export -->
+            <div id="global-controls" class="flex flex-wrap items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                 <div class="flex items-center gap-2">
+                    <label for="import-file-input" class="inline-flex items-center px-4 py-2 bg-white border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">Import File</label>
+                    <button id="export-history-btn" class="inline-flex items-center px-4 py-2 bg-white border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Export All</button>
+                    <input type="file" id="import-file-input" accept=".json" class="hidden" />
+                </div>
+                <p class="text-sm text-slate-500 hidden sm:block">You can also drag & drop a .json file anywhere on the page.</p>
+                <button id="clear-history-btn" class="inline-flex items-center px-4 py-2 bg-red-50 border border-red-200 rounded-md text-sm font-medium text-red-700 hover:bg-red-100 hover:border-red-300 transition-colors">Clear All</button>
+            </div>
+            
+            <!-- History Container -->
+            <div id="history-container" class="bg-transparent">
+                <ul id="history-list" class="space-y-3">
+                    <!-- History items will be injected here by script -->
+                </ul>
+                <div id="pagination-controls" class="flex justify-center items-center gap-2 mt-8">
+                    <!-- Pagination buttons will be added by script -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Drag & Drop Overlay -->
+    <div id="drag-overlay" class="hidden fixed inset-0 bg-sky-500/30 z-50 transition-opacity duration-300 opacity-0">
+        <div class="flex items-center justify-center h-full w-full p-4 pointer-events-none">
+            <div class="p-10 bg-white/95 rounded-2xl shadow-2xl border-4 border-dashed border-sky-500 text-center">
+                <p class="text-2xl font-bold text-sky-600">Drop your .json file here</p>
+            </div>
+        </div>
+    </div>
+
+    <template id="history-item-template">
+        <li class="history-item flex bg-white rounded-lg shadow-sm border border-slate-200 hover:shadow-md hover:border-sky-300 transition-all duration-200 overflow-hidden">
+            <a href="#" class="history-item-main flex-grow p-4 sm:p-5 block text-slate-800 hover:bg-slate-50/50 transition-colors">
+                <h3 class="font-semibold text-slate-800"></h3>
+                <p class="text-sm text-slate-500 mt-1"></p>
+            </a>
+            <div class="history-item-buttons flex items-center p-2 sm:p-3 border-l border-slate-200 space-x-1">
+                <button class="edit-btn p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-sky-500 transition-colors" title="Edit name">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                        <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+                <button class="export-item-btn p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-sky-500 transition-colors" title="Export this visualization">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                </button>
+                <button class="delete-btn p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-red-500 transition-colors" title="Delete this visualization">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                </button>
+            </div>
+        </li>
+    </template>
+    
+    <script>
+        // --- BOOKMARKLET AND SCRAPER SCRIPT (UNCHANGED) ---
+        const appUrl = 'https://postscope.pages.dev/viewer.html';
+        const scraperFunction = async (redirectUrl) => {
+            const path = window.location.pathname;
+            const isPostPage = path.includes('/status/');
+            const isHomePage = path.endsWith('/home');
+            const isProfilePage = /^\/[a-zA-Z0-9_]+$/.test(path) && !['/home', '/explore', '/notifications', '/messages', '/i/bookmarks', '/i/lists'].includes(path);
+
+            if (!isPostPage && !isHomePage && !isProfilePage) {
+                alert('Postscope works on a specific post, a user profile, or the home timeline. Please navigate to one and try again.');
+                return;
+            }
+
+            let userCancelled = false;
+            let discoverySectionFound = false;
+
+            const createOverlay = () => {
+                const overlay = document.createElement('div');
+                overlay.id = 'postscope-overlay';
+                overlay.style.position = 'fixed';
+                overlay.style.top = '0'; overlay.style.left = '0';
+                overlay.style.width = '100vw'; overlay.style.height = '100vh';
+                overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                overlay.style.zIndex = '99999';
+                overlay.style.display = 'flex';
+                overlay.style.justifyContent = 'center';
+                overlay.style.alignItems = 'center';
+                overlay.style.color = 'white';
+                overlay.style.fontFamily = 'sans-serif';
+                
+                overlay.innerHTML = `<div style="text-align: center; padding: 20px 40px; background: #222; border-radius: 10px;">
+                    <h2 id="postscope-status">Postscope is collecting posts...</h2>
+                    <p>Please keep this tab open and in view.</p>
+                    <p id="postscope-count" style="font-size: 1.2em; font-weight: bold; margin: 15px 0;">Found 0 posts</p>
+                    <button id="postscope-stop-btn" style="padding: 10px 20px; font-size: 1rem; color: #333; background: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">Stop & Visualize</button>
+                </div>`;
+                document.body.appendChild(overlay);
+
+                document.getElementById('postscope-stop-btn').onclick = () => {
+                    document.getElementById('postscope-status').textContent = 'Finalizing...';
+                    userCancelled = true;
+                };
+                return overlay;
+            };
+
+            const updateStatus = (count) => {
+                const countEl = document.getElementById('postscope-count');
+                if (countEl) countEl.textContent = `Found ${count} posts`;
+            };
+
+            const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+            
+            let mainAuthorHandle = null;
+            const context = { type: '', author: '', text: '' };
+
+            if (isPostPage) {
+                context.type = 'post';
+                const mainPostArticle = document.querySelector('article[data-testid="tweet"]');
+                mainAuthorHandle = mainPostArticle?.querySelector('div[data-testid="User-Name"] a[href^="/"]')?.href.split('/').pop();
+                context.author = mainAuthorHandle || 'unknown';
+                context.text = mainPostArticle?.querySelector('[data-testid="tweetText"]')?.innerText.substring(0, 100) + '...' || 'Unknown Tweet';
+            } else if (isHomePage) {
+                context.type = 'home';
+            } else if (isProfilePage) {
+                context.type = 'profile';
+                context.author = path.substring(1);
+            }
+
+            const overlay = createOverlay();
+            let previousHeight = -1;
+            let stuckCount = 0;
+            const foundTweets = new Set();
+            let scrapedData = 'author,text,likes\n';
+
+            while (!userCancelled && !discoverySectionFound) {
+                const mainContentArea = document.querySelector('main[role="main"]');
+                if (!mainContentArea) { console.warn("Could not find main content area. Scraping all articles."); }
+                
+                const cells = (mainContentArea || document).querySelectorAll('div[data-testid="cellInnerDiv"]');
+
+                for (const cell of cells) {
+                    const heading = cell.querySelector('h2[role="heading"] span, h2[dir="auto"] > span');
+                    if (heading && heading.innerText.trim().toLowerCase() === 'discover more') {
+                        discoverySectionFound = true;
+                        console.log("Found 'Discover More' section. Stopping collection.");
+                        break; 
+                    }
+
+                    if (cell.querySelector('div[role="button"] span')?.innerText.toLowerCase().includes('show replies')) {
+                        continue;
+                    }
+
+                    const article = cell.querySelector('article[data-testid="tweet"]');
+                    if (!article) continue;
+
+                    const tweetTextElement = article.querySelector('[data-testid="tweetText"]');
+                    const authorHandle = article.querySelector('div[data-testid="User-Name"] a[href^="/"]')?.href.split('/').pop();
+                    
+                    const likeElement = article.querySelector('[data-testid="like"]');
+                    const likeAriaLabel = likeElement ? likeElement.getAttribute('aria-label') : '0';
+                    let likes = 0;
+                    if (likeAriaLabel) {
+                        const likeMatch = likeAriaLabel.match(/(\d[\d,]*)/);
+                        if (likeMatch) likes = parseInt(likeMatch[1].replace(/,/g, ''), 10);
+                    }
+                    
+                    const shouldCollect = tweetTextElement && authorHandle && (!mainAuthorHandle || authorHandle !== mainAuthorHandle);
+
+                    if (shouldCollect) {
+                        const text = tweetTextElement.innerText;
+                        if (!foundTweets.has(text)) {
+                            foundTweets.add(text);
+                            updateStatus(foundTweets.size);
+                            const sanitizedText = text.replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
+                            scrapedData += `"${authorHandle}","${sanitizedText}","${likes}"\n`;
+                        }
+                    }
+                }
+
+                if (discoverySectionFound) {
+                    userCancelled = true;
+                    document.getElementById('postscope-status').textContent = 'Reached "Discover More". Finalizing...';
+                    await wait(1000);
+                    continue; 
+                }
+
+                window.scrollTo(0, document.body.scrollHeight);
+                await wait(1500);
+                
+                const currentHeight = document.body.scrollHeight;
+                if (previousHeight !== -1 && currentHeight === previousHeight) {
+                    stuckCount++;
+                    console.log(`Page height unchanged. Stuck count: ${stuckCount}`);
+                } else {
+                    stuckCount = 0;
+                }
+
+                if (stuckCount >= 3) {
+                    console.log('Page height has not changed for 3 consecutive scrolls, assuming end of content.');
+                    userCancelled = true;
+                    let endMessage = 'Reached end of content. Finalizing...';
+                    if (isPostPage) endMessage = 'Reached end of replies. Finalizing...';
+                    if (isProfilePage) endMessage = 'Reached end of profile tweets. Finalizing...';
+                    document.getElementById('postscope-status').textContent = endMessage;
+                    await wait(1000);
+                }
+                
+                previousHeight = currentHeight;
+            }
+
+            if (foundTweets.size > 0) {
+                const encodedData = btoa(unescape(encodeURIComponent(scrapedData)));
+                const encodedContext = btoa(unescape(encodeURIComponent(JSON.stringify(context))));
+                window.location.href = `${redirectUrl}#data=${encodedData}&context=${encodedContext}`;
+            } else {
+                overlay.remove();
+                alert('No posts were collected. Please try again on a page with tweets.');
+            }
+        };
+
+        const minifiedScraperString = scraperFunction.toString()
+            .replace(/\/\/.*/g, '') .replace(/^\s+/gm, '') .replace(/\n/g, '');
+
+        const codeString = `try { (${minifiedScraperString})('${appUrl}'); } catch(e) { console.error(e); alert('An error occurred: ' + e.message); }`;
+        const bookmarkletHref = `javascript:${encodeURIComponent(codeString)}`;
+        document.getElementById('bookmarklet').href = bookmarkletHref;
+
+
+        // --- HISTORY MANAGEMENT SCRIPT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const HISTORY_KEY = 'postscopeHistory';
+            const ITEMS_PER_PAGE = 5;
+            let currentPage = 1;
+            
+            const historyList = document.getElementById('history-list');
+            const clearHistoryBtn = document.getElementById('clear-history-btn');
+            const toggleBtn = document.getElementById('toggle-instructions-btn');
+            const instructionsContent = document.getElementById('instructions-content');
+            const exportBtn = document.getElementById('export-history-btn');
+            const fileInput = document.getElementById('import-file-input');
+            const historyItemTemplate = document.getElementById('history-item-template');
+            const dragOverlay = document.getElementById('drag-overlay');
+
+            function updateHistoryItemName(urlFragment, newName) {
+                if (!urlFragment || !newName) return;
+                let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+                const item = history.find(item => item.urlFragment === urlFragment);
+                if (item) {
+                    item.name = newName;
+                    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+                }
+            }
+            
+            function renderHistory(page = 1) {
+                currentPage = page;
+                historyList.innerHTML = '';
+                let history = [];
+                try {
+                    history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+                } catch (e) {
+                    console.error("Failed to parse history from localStorage", e);
+                    localStorage.removeItem(HISTORY_KEY);
+                }
+
+                if (history.length === 0) {
+                    historyList.innerHTML = '<div class="text-center text-slate-500 py-8 bg-white border border-slate-200 rounded-lg shadow-sm"><p>No history yet.</p><p>Use the bookmarklet or import a file to get started.</p></div>';
+                    exportBtn.style.display = 'none';
+                    clearHistoryBtn.style.display = 'none';
+                    instructionsContent.style.display = 'block';
+                    toggleBtn.style.display = 'none';
+                    document.getElementById('pagination-controls').innerHTML = '';
+                } else {
+                    exportBtn.style.display = 'inline-flex';
+                    clearHistoryBtn.style.display = 'inline-flex';
+                    toggleBtn.style.display = 'flex';
+
+                    const paginatedItems = history.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+                    paginatedItems.forEach(item => {
+                        const templateClone = historyItemTemplate.content.cloneNode(true);
+                        const li = templateClone.querySelector('.history-item');
+                        li.dataset.id = item.id;
+                        li.dataset.urlFragment = item.urlFragment;
+                        
+                        const defaultName = item.context.type === 'post' ? `Replies to @${item.context.author}` :
+                                    item.context.type === 'profile' ? `Profile of @${item.context.author}` : 'Your Home Timeline';
+                        const title = item.name || defaultName;
+                        const date = new Date(item.timestamp).toLocaleString();
+                        
+                        li.querySelector('.history-item-main').href = `${appUrl}${item.urlFragment}`;
+                        li.querySelector('h3').textContent = title;
+                        li.querySelector('p').textContent = `${item.postCount} posts • Visualized on ${date}`;
+
+                        historyList.appendChild(li);
+                    });
+                    renderPagination(history.length);
+                }
+            }
+
+            function renderPagination(totalItems) {
+                const paginationControls = document.getElementById('pagination-controls');
+                paginationControls.innerHTML = '';
+                const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
+                if (totalPages <= 1) return;
+
+                const createButton = (text, page, isDisabled = false, isActive = false) => {
+                    const btn = document.createElement('button');
+                    btn.innerHTML = text;
+                    btn.disabled = isDisabled;
+                    const baseClasses = "px-3 py-1.5 border border-slate-300 rounded-md text-sm font-medium transition-colors";
+                    const activeClasses = "bg-sky-600 border-sky-600 text-white";
+                    const defaultClasses = "bg-white text-slate-700 hover:bg-slate-50";
+                    const disabledClasses = "bg-slate-100 text-slate-400 cursor-not-allowed";
+
+                    btn.className = `${baseClasses} ${isDisabled ? disabledClasses : (isActive ? activeClasses : defaultClasses)}`;
+                    btn.addEventListener('click', () => renderHistory(page));
+                    return btn;
+                };
+
+                paginationControls.appendChild(createButton('« Prev', currentPage - 1, currentPage === 1));
+
+                for (let i = 1; i <= totalPages; i++) {
+                    paginationControls.appendChild(createButton(i, i, false, i === currentPage));
+                }
+
+                paginationControls.appendChild(createButton('Next »', currentPage + 1, currentPage === totalPages));
+            }
+            
+            function deleteHistoryItem(id) {
+                let history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+                const updatedHistory = history.filter(item => item.id !== id);
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(updatedHistory));
+                
+                const totalPages = Math.ceil(updatedHistory.length / ITEMS_PER_PAGE);
+                if (currentPage > totalPages) {
+                    currentPage = totalPages || 1;
+                }
+                renderHistory(currentPage);
+            }
+
+            function handleItemExport(id) {
+                const history = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+                const itemToExport = history.find(item => item.id === id);
+                if (!itemToExport) {
+                    alert('Could not find visualization to export.');
+                    return;
+                }
+                
+                let slug = itemToExport.name || `item-${itemToExport.id}`;
+                const safeSlug = slug.replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+                const filename = `postscope_export_${safeSlug}_${new Date(itemToExport.timestamp).toISOString().split('T')[0]}.json`;
+
+                const blob = new Blob([JSON.stringify([itemToExport], null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            function handleFullExport() {
+                const historyData = localStorage.getItem(HISTORY_KEY);
+                if (!historyData || historyData === '[]') {
+                    alert('No history to export.');
+                    return;
+                }
+                const blob = new Blob([historyData], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `postscope_history_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+            
+            function processImportedFile(file) {
+                 if (!file || !file.type.match('application/json')) {
+                    alert('Please drop a valid .json file.');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        if (!Array.isArray(importedData)) throw new Error('Invalid file format. Expected an array of history items.');
+                        
+                        const currentHistory = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
+                        const existingFragments = new Set(currentHistory.map(item => item.urlFragment));
+                        const newItems = importedData.filter(item => item.urlFragment && !existingFragments.has(item.urlFragment));
+
+                        if (newItems.length === 0) {
+                            alert('No new visualizations found to import. They may already be in your history.');
+                            return;
+                        }
+                        
+                        const combinedHistory = [...newItems, ...currentHistory];
+                        combinedHistory.sort((a, b) => b.timestamp - a.timestamp);
+                        
+                        localStorage.setItem(HISTORY_KEY, JSON.stringify(combinedHistory));
+                        renderHistory(1);
+                        alert(`Successfully imported ${newItems.length} new visualization(s).`);
+                    } catch (err) {
+                        alert(`Error importing file: ${err.message}`);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function handleFileSelected(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                processImportedFile(file);
+                event.target.value = null; // Reset input
+            }
+            
+            // --- Robust Drag and Drop Listeners ---
+            let dragLeaveTimeout;
+
+            function showOverlay() {
+                // Ensure pointer-events are enabled so we can drop on it
+                dragOverlay.style.pointerEvents = 'auto';
+                dragOverlay.classList.remove('hidden');
+                setTimeout(() => dragOverlay.classList.remove('opacity-0'), 10);
+            }
+            function hideOverlay() {
+                dragOverlay.classList.add('opacity-0');
+                setTimeout(() => {
+                    dragOverlay.classList.add('hidden');
+                    // Disable pointer events when hidden
+                    dragOverlay.style.pointerEvents = 'none';
+                }, 300);
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                window.addEventListener(eventName, (e) => {
+                    if (e.dataTransfer.types.includes('Files')) {
+                        e.preventDefault();
+                        clearTimeout(dragLeaveTimeout);
+                        showOverlay();
+                    }
+                });
+            });
+
+            window.addEventListener('dragleave', (e) => {
+                // This timeout is the key. It waits to see if we re-enter another
+                // element immediately. If we don't, it means we've left the window.
+                clearTimeout(dragLeaveTimeout);
+                dragLeaveTimeout = setTimeout(hideOverlay, 100);
+            });
+            
+            dragOverlay.addEventListener('drop', (e) => {
+                e.preventDefault();
+                hideOverlay();
+                const file = e.dataTransfer.files[0];
+                processImportedFile(file);
+            });
+
+            // Fallback for dropping anywhere else on the page
+            window.addEventListener('drop', (e) => {
+                e.preventDefault();
+                hideOverlay();
+            });
+
+
+            historyList.addEventListener('click', e => {
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                const itemEl = button.closest('.history-item');
+                const itemId = parseInt(itemEl.dataset.id, 10);
+                const urlFragment = itemEl.dataset.urlFragment;
+                
+                if (button.classList.contains('delete-btn')) {
+                    if(confirm('Are you sure you want to delete this visualization?')) {
+                        deleteHistoryItem(itemId);
+                    }
+                } else if (button.classList.contains('export-item-btn')) {
+                    handleItemExport(itemId);
+                } else if (button.classList.contains('edit-btn')) {
+                    const h3 = itemEl.querySelector('h3');
+                    const originalName = h3.textContent;
+                    
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = originalName;
+                    input.className = 'w-full text-base font-semibold bg-white border border-sky-400 rounded-md px-1 py-0.5 -my-0.5 focus:outline-none focus:ring-1 focus:ring-sky-500';
+                    input.addEventListener('click', e => e.stopPropagation()); // Prevent link navigation
+                    
+                    h3.replaceWith(input);
+                    input.focus();
+                    input.select();
+                    
+                    const save = () => {
+                        const newName = input.value.trim();
+                        if (newName && newName !== originalName) {
+                            h3.textContent = newName;
+                            updateHistoryItemName(urlFragment, newName);
+                        } else {
+                            h3.textContent = originalName;
+                        }
+                        input.replaceWith(h3);
+                    };
+
+                    input.addEventListener('blur', save);
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') input.blur();
+                        if (e.key === 'Escape') {
+                           input.value = originalName;
+                           input.blur();
+                        }
+                    });
+                }
+            });
+            
+            clearHistoryBtn.addEventListener('click', () => {
+                if(confirm('Are you sure you want to clear your entire visualization history? This cannot be undone.')) {
+                    localStorage.removeItem(HISTORY_KEY);
+                    renderHistory(1);
+                }
+            });
+            
+            toggleBtn.addEventListener('click', () => {
+                const isHidden = instructionsContent.style.display === 'none';
+                instructionsContent.style.display = isHidden ? 'block' : 'none';
+                toggleBtn.innerHTML = isHidden ? 'Hide Instructions <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>' : 'Show Instructions <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>';
+            });
+
+            exportBtn.addEventListener('click', handleFullExport);
+            fileInput.addEventListener('change', handleFileSelected);
+
+            renderHistory(1);
+        });
+    </script>
+</body>
+</html>

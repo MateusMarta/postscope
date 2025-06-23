@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    /* Styles for viewer.html dynamic elements */
+    .spinner {
+        @apply border-4 border-slate-200 border-l-sky-500 rounded-full w-5 h-5 animate-spin;
+    }
+    .info-banner {
+        @apply text-sm p-4 bg-sky-50 border-l-4 border-sky-500 text-sky-800 mt-4 rounded-md flex items-center gap-3;
+    }
+    .info-banner p {
+        @apply m-0 flex-1;
+    }
+    .error-container {
+        @apply text-center p-4 bg-red-50 border-l-4 border-red-500 text-red-800 mt-4 rounded-md;
+    }
+    .error-container p {
+        @apply m-0 font-medium;
+    }
+    
+    #source-info blockquote {
+        @apply mt-2 ml-0 pl-3 border-l-2 border-slate-300 italic text-slate-500;
+    }
+
+    .cluster-item {
+        @apply flex items-center gap-3 p-2 rounded-lg cursor-pointer border-2 border-transparent transition-colors duration-150 hover:bg-slate-100;
+    }
+    .cluster-item.active {
+        @apply bg-sky-100/70 border-sky-500;
+    }
+    .cluster-item.cluster-others {
+        @apply italic text-slate-500;
+    }
+    .legend-color-swatch {
+        @apply w-4 h-4 rounded-sm shrink-0;
+    }
+    .cluster-item input[type="text"] {
+        @apply flex-grow bg-transparent p-1 -m-1 rounded-md focus:bg-white focus:ring-2 focus:ring-sky-500 focus:outline-none transition text-sm;
+    }
+    .cluster-item-count {
+        @apply text-xs font-medium text-slate-500 bg-slate-200 px-2 py-0.5 rounded-full whitespace-nowrap;
+    }
+    .cluster-visibility-toggle {
+        @apply bg-transparent border-none cursor-pointer p-1 text-slate-400 shrink-0 w-7 h-7 rounded-full hover:bg-slate-200 hover:text-slate-600 transition-colors;
+    }
+    .cluster-visibility-toggle.visible {
+        @apply text-sky-600;
+    }
+    .cluster-visibility-toggle svg {
+        @apply w-full h-full;
+    }
+
+    /* STYLING FOR THE RESPONSE LIST CONTAINER */
+    #response-list-container {
+        @apply h-[35vh] bg-white border-t-2 border-slate-200 shadow-inner overflow-y-auto;
+    }
+
+    .cluster-detail-view {
+        /* Use a grid for better spacing and to prevent margin collapse */
+        @apply p-4 grid gap-2;
+    }
+    .response-item {
+        @apply bg-slate-50 rounded-md p-3 text-sm leading-snug border border-slate-200/80;
+    }
+    .response-item b {
+        @apply text-slate-900 font-semibold;
+    }
+
+    /* For index.html dynamic pagination */
+    #pagination-controls button.active {
+        @apply bg-sky-600 border-sky-600 text-white;
+    }
+}
