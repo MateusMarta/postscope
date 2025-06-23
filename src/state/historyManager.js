@@ -1,20 +1,21 @@
+import { vizStore } from '../services/visualizationStore.js';
+
 export class HistoryManager {
-    constructor(historyKey) {
-        this.HISTORY_KEY = historyKey;
-        this.MAX_HISTORY_ITEMS = 20;
+    constructor() {
+        // This class no longer manages state directly.
     }
 
     /**
      * Retrieves all information needed to start or restore a session.
      * @param {string} urlFragment The unique identifier from the URL hash.
-     * @returns {{data: object[], context: object, savedState: object, historyEntry: object}}
+     * @returns {Promise<{data: object[], context: object, savedState: object, historyEntry: object}>}
      */
-    getSession(urlFragment) {
-        const history = this._getHistory();
-        const historyEntry = history.find(item => item.urlFragment === urlFragment);
+    async getSession(urlFragment) {
+        await vizStore._getDB(); // Ensure DB is ready
+        const historyEntry = await vizStore.getVisualization(urlFragment);
 
         if (!historyEntry) {
-            // This case handles a fresh load from the bookmarklet where the entry isn't in history yet.
+            // This case handles a fresh load from the bookmarklet where the entry isn't in the DB yet.
             const { data, context } = this._parseUrlFragment(urlFragment);
             return { data, context, savedState: null, historyEntry: null };
         }
@@ -74,27 +75,14 @@ export class HistoryManager {
         return { data, context };
     }
 
-    _getHistory() {
-        try {
-            return JSON.parse(localStorage.getItem(this.HISTORY_KEY)) || [];
-        } catch (e) {
-            console.error("Failed to parse history from localStorage", e);
-            localStorage.removeItem(this.HISTORY_KEY);
-            return [];
-        }
-    }
-
-    _saveHistory(history) {
-        localStorage.setItem(this.HISTORY_KEY, JSON.stringify(history));
-    }
-
-    saveNewHistoryEntry(context, postCount, urlFragment) {
+    async saveNewHistoryEntry(context, postCount, urlFragment) {
         if (!urlFragment) return;
-        let history = this._getHistory();
+        await vizStore._getDB();
 
-        if (history.some(item => item.urlFragment === urlFragment)) {
+        const existing = await vizStore.getVisualization(urlFragment);
+        if (existing) {
             console.log("This visualization is already in the history. Not creating a new entry.");
-            return;
+            return null;
         }
 
         let name = 'Untitled Visualization';
@@ -114,37 +102,30 @@ export class HistoryManager {
             savedState: null
         };
 
-        history.unshift(newEntry);
-        history = history.slice(0, this.MAX_HISTORY_ITEMS);
-        this._saveHistory(history);
-        console.log("Saved new entry to history:", newEntry);
+        await vizStore.saveVisualization(newEntry);
+        console.log("Saved new entry to history DB:", newEntry);
+        return newEntry;
     }
 
-    updateNameForSession(urlFragment, newName) {
+    async updateNameForSession(urlFragment, newName) {
         if (!urlFragment || !newName) return;
-        let history = this._getHistory();
-        const historyIndex = history.findIndex(item => item.urlFragment === urlFragment);
-
-        if (historyIndex !== -1) {
-            history[historyIndex].name = newName;
-            this._saveHistory(history);
-            console.log(`Updated name for session ${urlFragment} to "${newName}"`);
-        }
+        await vizStore.updateName(urlFragment, newName);
+        console.log(`Updated name for session ${urlFragment} to "${newName}"`);
     }
 
-    saveStateForSession(urlFragment, stateToSave) {
+    async saveStateForSession(urlFragment, stateToSave) {
         if (!urlFragment) return;
-        let history = this._getHistory();
-        const historyIndex = history.findIndex(item => item.urlFragment === urlFragment);
-
-        if (historyIndex !== -1) {
-            history[historyIndex].savedState = stateToSave;
-            // Also update the name from the state, ensuring it's synced
+        
+        const entry = await vizStore.getVisualization(urlFragment);
+        if (entry) {
+            entry.savedState = stateToSave;
             if (stateToSave.visualizationName) {
-                history[historyIndex].name = stateToSave.visualizationName;
+                entry.name = stateToSave.visualizationName;
             }
-            this._saveHistory(history);
-            console.log("Saved current state to history for:", urlFragment);
+            await vizStore.saveVisualization(entry);
+            console.log("Saved current state to history DB for:", urlFragment);
+        } else {
+            console.warn("Could not find history entry to save state for:", urlFragment);
         }
     }
 }

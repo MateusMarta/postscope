@@ -6,9 +6,21 @@ import { EmbeddingVisualizer } from './ui/EmbeddingVisualizer.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     const appState = new AppState();
-    const historyManager = new HistoryManager('postscopeHistory');
+    const historyManager = new HistoryManager();
     const visualizer = new EmbeddingVisualizer({ containerId: 'visualization-container' });
     const analysisPipeline = new AnalysisPipeline();
+
+    // The original URL fragment is the unique ID for this session
+    const originalUrlFragment = window.location.hash;
+
+    const saveCurrentState = () => {
+        if (!originalUrlFragment) return;
+        // This is a "fire-and-forget" operation, suitable for lifecycle events.
+        // The browser will attempt to complete the IndexedDB transaction in the background.
+        historyManager.saveStateForSession(originalUrlFragment, appState.getSerializableState());
+        localStorage.setItem('min-cluster-size', ui.getMinClusterSize());
+        console.log("State save triggered.");
+    };
 
     const ui = new UIController({
         onRecluster: async () => {
@@ -24,17 +36,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 appState.switchToExistingClustering(minClusterSize);
                 ui.render(appState, visualizer);
                 ui.hideLoading(`Restored ${appState.getUniqueClusterCount()} clusters.`);
-                return;
+            } else {
+                ui.showLoading('Updating clusters...');
+                await new Promise(resolve => setTimeout(resolve, 10));
+
+                const results = await analysisPipeline.runClustering(appState.getData10D(), minClusterSize);
+                appState.updateClusteringResults(results.labels, minClusterSize);
+                
+                ui.render(appState, visualizer);
+                ui.hideLoading(`Found ${appState.getUniqueClusterCount()} new clusters.`);
             }
-
-            ui.showLoading('Updating clusters...');
-            await new Promise(resolve => setTimeout(resolve, 10));
-
-            const results = await analysisPipeline.runClustering(appState.getData10D(), minClusterSize);
-            appState.updateClusteringResults(results.labels, minClusterSize);
-            
-            ui.render(appState, visualizer);
-            ui.hideLoading(`Found ${appState.getUniqueClusterCount()} new clusters.`);
+            saveCurrentState(); // Save state after any recluster action
         },
         onQuery: async (text) => {
             const coords = await analysisPipeline.transformSingle(text, appState.getAllItems(), appState.getData2D());
@@ -42,15 +54,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         onTitleChange: (newName) => {
             appState.setVisualizationName(newName);
-            ui.setVisualizationTitle(newName); // Re-render title to reflect change
+            ui.setVisualizationTitle(newName);
+            saveCurrentState();
         },
         onNameChange: (label, newName) => {
             appState.setClusterName(label, newName);
             visualizer.render(appState.getAllItems(), appState.getData2D(), appState.getLabels(), appState.getCustomizationsForCurrentSize(), appState.getLabelToCustIdMap());
+            saveCurrentState();
         },
         onVisibilityChange: (label, isVisible) => {
             appState.setClusterVisibility(label, isVisible);
             ui.render(appState, visualizer);
+            saveCurrentState();
         },
         onToggleLabels: () => {
            const isVisible = visualizer.togglePointLabels();
@@ -59,16 +74,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         getMapInstance: () => visualizer.getMapInstance()
     });
 
-    const originalUrlFragment = window.location.hash;
-    const { data, context, savedState, historyEntry } = historyManager.getSession(originalUrlFragment);
+    const { data, context, savedState, historyEntry } = await historyManager.getSession(originalUrlFragment);
 
     if (savedState && savedState.data2D && savedState.data2D.length > 0) {
         // --- PATH A: Load from fully saved state ---
-        console.log("Found complete saved state. Loading...");
+        console.log("Found complete saved state in IndexedDB. Loading...");
         ui.showLoading('Loading saved visualization...');
         
         appState.setFullState(savedState);
-        // The name in the saved state is most recent, so prioritize it.
         const visName = savedState.visualizationName || (historyEntry ? historyEntry.name : 'Untitled Visualization');
         appState.setVisualizationName(visName);
         ui.setVisualizationTitle(visName);
@@ -91,11 +104,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         // --- PATH B: Run new analysis ---
         if (!data || data.length === 0) {
-            ui.showError("No data found. Please use the Postscope bookmarklet on a Twitter/X page.");
+            const isHomePage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
+            if (!isHomePage) {
+               ui.showError("No data found. Please use the Postscope bookmarklet on a Twitter/X page.");
+            }
             return;
         }
         
-        // Use history entry name if available (e.g., user re-clicked link from index)
         const visName = historyEntry ? historyEntry.name : 'Untitled Visualization';
         appState.setVisualizationName(visName);
         ui.setVisualizationTitle(visName);
@@ -105,6 +120,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         ui.disableControls();
 
         try {
+            const newHistoryEntry = await historyManager.saveNewHistoryEntry(context, data.length, originalUrlFragment);
+            if(newHistoryEntry) {
+                appState.setVisualizationName(newHistoryEntry.name);
+                ui.setVisualizationTitle(newHistoryEntry.name);
+            }
+
             const results = await analysisPipeline.runFullAnalysis(data, (progressMessage) => ui.showLoading(progressMessage));
 
             appState.setInitialData(data, results.embeddings, results.data10D, results.data2D);
@@ -112,15 +133,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             ui.setMinClusterSize(initialMinSize);
 
             appState.updateClusteringResults(results.labels, parseInt(initialMinSize, 10));
-
-            historyManager.saveNewHistoryEntry(context, data.length, originalUrlFragment);
-            // After creating the entry, get the default name and set it
-            const newEntry = historyManager.getSession(originalUrlFragment).historyEntry;
-            if(newEntry) {
-                appState.setVisualizationName(newEntry.name);
-                ui.setVisualizationTitle(newEntry.name);
-            }
-
+            
+            saveCurrentState(); // Perform the first save
             history.replaceState(null, '', ' ');
 
             ui.render(appState, visualizer);
@@ -133,10 +147,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    window.addEventListener('beforeunload', () => {
-        // Ensure the latest name from the app state is synced to the history list
-        historyManager.updateNameForSession(originalUrlFragment, appState.getVisualizationName());
-        historyManager.saveStateForSession(originalUrlFragment, appState.getSerializableState());
-        localStorage.setItem('min-cluster-size', ui.getMinClusterSize());
+    // Use the Page Visibility API for robust saving instead of 'beforeunload'
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            saveCurrentState();
+        }
     });
 });
