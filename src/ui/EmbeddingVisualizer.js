@@ -117,7 +117,7 @@ export class EmbeddingVisualizer {
         this.map.getSource('cluster-names').setData({ type: 'FeatureCollection', features: nameFeatures });
     }
 
-    render(pointsData, twoDimCoords, labels, customizations, labelToCustIdMap) {
+    render(pointsData, twoDimCoords, labels, customizations, labelToCustIdMap, areLabelsVisible) {
         if (!this.map.isStyleLoaded() || twoDimCoords.length === 0) {
             this.map.once('load', () => this.render(...arguments));
             return;
@@ -139,6 +139,10 @@ export class EmbeddingVisualizer {
                 'circle-stroke-width': 1, 'circle-stroke-color': '#ffffff'
             }
         }, 'point-labels');
+        
+        if (this.map.getLayer('point-labels')) {
+            this.map.setLayoutProperty('point-labels', 'visibility', areLabelsVisible ? 'visible' : 'none');
+        }
         
         if (customizations && labelToCustIdMap) {
             this._updateClusterNameLayer(twoDimCoords, labels, customizations, labelToCustIdMap);

@@ -49,14 +49,32 @@
                 <p class="text-sm text-slate-500 hidden sm:block">You can also drag & drop a .json file anywhere on the page.</p>
                 <button id="clear-history-btn" class="inline-flex items-center px-4 py-2 bg-red-50 border border-red-200 rounded-md text-sm font-medium text-red-700 hover:bg-red-100 hover:border-red-300 transition-colors">Clear All</button>
             </div>
+
+            <!-- Search Container -->
+            <div id="search-container" class="relative" style="display: none;">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                    <svg class="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <input type="search" id="search-history-input" placeholder="Search visualizations by name, author, or content..." class="block w-full rounded-lg border border-slate-300 bg-white py-3 pl-12 pr-4 text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 text-base">
+            </div>
             
             <!-- History Container -->
             <div id="history-container" class="bg-transparent">
                 <ul id="history-list" class="space-y-3">
                     <!-- History items will be injected here by script -->
                 </ul>
-                <div id="pagination-controls" class="flex justify-center items-center gap-2 mt-8">
-                    <!-- Pagination buttons will be added by script -->
+                <div id="pagination-controls" class="flex justify-between items-center mt-8">
+                    <div id="pagination-prev-container">
+                        <!-- Prev button will be injected here -->
+                    </div>
+                    <div id="pagination-pages-container" class="flex-grow flex justify-center items-center flex-wrap gap-2 min-w-0 px-4">
+                        <!-- Page numbers will be injected here -->
+                    </div>
+                    <div id="pagination-next-container">
+                        <!-- Next button will be injected here -->
+                    </div>
                 </div>
             </div>
         </div>

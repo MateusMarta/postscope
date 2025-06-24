@@ -38,6 +38,13 @@ export class UIController {
         this.reclusterButton.addEventListener('click', () => this.callbacks.onRecluster());
         this.toggleLabelsButton.addEventListener('click', () => this.callbacks.onToggleLabels());
         this.queryInput.addEventListener('input', debounce((e) => this.callbacks.onQuery(e.target.value.trim()), 300));
+
+        this.minClusterSizeEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.callbacks.onRecluster();
+            }
+        });
     }
 
     _attachMapEventListeners(map) {
@@ -87,10 +94,9 @@ export class UIController {
     
     getMinClusterSize = () => parseInt(this.minClusterSizeEl.value, 10);
     setMinClusterSize = (size) => this.minClusterSizeEl.value = size;
-    updateToggleLabelsButton = (isVisible) => this.toggleLabelsButton.textContent = isVisible ? 'Hide Point Labels' : 'Show Point Labels';
+    updateToggleLabelsButton = (isVisible) => this.toggleLabelsButton.textContent = isVisible ? 'Hide Text' : 'Show Text';
 
     setVisualizationTitle(name) {
-        // Add a guard clause to prevent crash if element isn't found
         if (!this.titleAreaEl) {
             console.error("UIController could not find the '#visualization-title-area' element in the DOM.");
             return;
@@ -185,10 +191,8 @@ export class UIController {
                 break;
             case 'search':
                 const filterMap = { live: 'Latest', user: 'People', image: 'Media' };
-                let filterName = 'Top'; // Default to 'Top' if no filter is specified
-                if (context.filter) {
-                    filterName = filterMap[context.filter] || context.filter;
-                }
+                let filterName = 'Top';
+                if (context.filter) { filterName = filterMap[context.filter] || context.filter; }
                 const filterText = ` on the <b>${filterName}</b> tab`;
                 html = `<p>Visualizing <b>${postCount}</b> posts from search${filterText}:</p><blockquote>${truncate(context.query, 150)}</blockquote>`;
                 break;
@@ -207,7 +211,7 @@ export class UIController {
         const customizations = appState.getCustomizationsForCurrentSize();
         const labelToCustIdMap = appState.getLabelToCustIdMap();
         
-        visualizer.render(items, coords, labels, customizations, labelToCustIdMap);
+        visualizer.render(items, coords, labels, customizations, labelToCustIdMap, appState.getArePointLabelsVisible());
         this._renderClusterUI(appState);
     }
 
@@ -259,8 +263,14 @@ export class UIController {
                 nameInput.value = (currentCustomization && currentCustomization.name) ? currentCustomization.name : defaultName;
                 nameInput.placeholder = defaultName;
                 nameInput.addEventListener('input', debounce((e) => this.callbacks.onNameChange(label, e.target.value), 500));
-                nameInput.addEventListener('keydown', e => e.stopPropagation());
                 nameInput.addEventListener('click', e => e.stopPropagation());
+                
+                nameInput.addEventListener('keydown', e => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') {
+                        e.target.blur();
+                    }
+                });
 
                 const visibilityToggle = document.createElement('button');
                 visibilityToggle.type = 'button';

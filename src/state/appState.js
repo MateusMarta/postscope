@@ -5,19 +5,18 @@ export class AppState {
         this.embeddings = [];
         this.data10D = [];
         this.data2D = [];
+        this.arePointLabelsVisible = true; // Default to visible for new visualizations
 
         this.currentLabels = [];
         this.currentMinClusterSize = 5;
         
         // Caches all data related to a specific clustering run
-        // Map<minSize, { labels: number[], labelToCustIdMap: Map<number, number> }>
         this.clusteringDataByMinSize = new Map();
 
         // Stores customizations across different cluster size settings
-        // Map<minSize, Map<custId, { name, visible, memberIndices }>>
         this.allSettingsCustomizations = new Map();
         
-        // For the *current* clustering, maps a label (e.g., 5) to a persistent customization ID (e.g., 2)
+        // For the *current* clustering, maps a label to a persistent customization ID
         this.labelToCustIdMap = new Map();
         
         this.nextCustomizationId = 0;
@@ -31,6 +30,7 @@ export class AppState {
     getEmbeddings = () => this.embeddings;
     getLabels = () => this.currentLabels;
     getMinClusterSize = () => this.currentMinClusterSize;
+    getArePointLabelsVisible = () => this.arePointLabelsVisible;
     getCustomizationsForCurrentSize = () => this.allSettingsCustomizations.get(this.currentMinClusterSize) || new Map();
     getLabelToCustIdMap = () => this.labelToCustIdMap;
     getUniqueClusterCount = () => new Set(this.currentLabels.filter(l => l !== -1)).size;
@@ -38,6 +38,7 @@ export class AppState {
 
     // --- SETTERS & STATE MODIFIERS ---
     setVisualizationName = (name) => { this.visualizationName = name; };
+    setArePointLabelsVisible = (isVisible) => { this.arePointLabelsVisible = isVisible; };
 
     setInitialData(allItems, embeddings, data10D, data2D) {
         this.allItems = allItems.map((item, i) => ({ ...item, embedding: embeddings[i] }));
@@ -163,10 +164,10 @@ export class AppState {
         return {
             visualizationName: this.visualizationName,
             allItems: this.allItems,
-            // Convert any typed arrays (e.g., Float32Array) to regular arrays for safe JSON serialization.
             embeddings: this.embeddings.map(e => Array.from(e)),
             data10D: this.data10D,
             data2D: this.data2D,
+            arePointLabelsVisible: this.arePointLabelsVisible,
             currentLabels: this.currentLabels,
             minClusterSize: this.currentMinClusterSize,
             customizations: serializableCustomizations,
@@ -178,11 +179,10 @@ export class AppState {
     setFullState(state) {
         this.visualizationName = state.visualizationName || "Untitled Visualization";
         this.allItems = state.allItems || [];
+        this.arePointLabelsVisible = state.arePointLabelsVisible ?? true; // Default to true if not present
 
-        // Handle old and new formats for embeddings to be backwards-compatible
         const loadedEmbeddings = state.embeddings || [];
         if (loadedEmbeddings.length > 0 && !Array.isArray(loadedEmbeddings[0]) && typeof loadedEmbeddings[0] === 'object') {
-            console.warn("Old embedding format detected (object). Converting to array format.");
             this.embeddings = loadedEmbeddings.map(obj => Object.values(obj));
         } else {
             this.embeddings = loadedEmbeddings;
