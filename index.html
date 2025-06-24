@@ -29,7 +29,7 @@
                 <div class="mt-8 text-slate-700">
                     <ol class="list-decimal list-inside space-y-3">
                         <li><strong>Drag the 'Postscope it!' button</strong> to your bookmarks bar.</li>
-                        <li>Navigate to an X (Twitter) post, a user profile, or your home timeline.</li>
+                        <li>Navigate to an X (Twitter) post, a user profile, your home timeline, or another supported page.</li>
                         <li>Click the 'Postscope it!' bookmarklet you just saved.</li>
                         <li>The page will scroll to collect posts. Click "Stop & Visualize" when ready.</li>
                         <li>Your analysis will appear on a new page.</li>
@@ -99,29 +99,90 @@
         (function() {
             const appUrl = 'https://postscope.pages.dev/viewer.html';
             const scraperFunction = async (redirectUrl) => {
-                const path = window.location.pathname;
-                const isPostPage = path.includes('/status/');
-                const isHomePage = path.endsWith('/home');
-                const isProfilePage = /^\/[a-zA-Z0-9_]+$/.test(path) && !['/home', '/explore', '/notifications', '/messages', '/i/bookmarks', '/i/lists'].includes(path);
+                const SCRIPT_VERSION = 1;
+                const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+                const waitForElement = async (selector, context = document, timeout = 10000) => {
+                    const start = Date.now();
+                    while (Date.now() - start < timeout) {
+                        const el = context.querySelector(selector);
+                        if (el) return el;
+                        await wait(200);
+                    }
+                    return null;
+                };
+                const getPageType = (path) => {
+                    if (path.startsWith('/search')) {
+                        const params = new URLSearchParams(window.location.search);
+                        return { type: 'search', query: params.get('q') || '', filter: params.get('f') };
+                    }
+                    if (path.includes('/status/')) return { type: 'post' };
+                    if (path.endsWith('/home')) return { type: 'home' };
+                    if (path.startsWith('/explore')) return { type: 'explore' };
+                    if (path === '/i/bookmarks') return { type: 'bookmarks' };
+                    if (path.startsWith('/i/communities/')) return { type: 'communities', id: path.split('/')[3] };
+                    if (path.startsWith('/i/lists/')) return { type: 'list', id: path.split('/')[3] };
+                    const userCommunitiesMatch = path.match(/^\/([a-zA-Z0-9_]+)\/communities(\/explore)?$/);
+                    if (userCommunitiesMatch) {
+                        return { type: userCommunitiesMatch[2] ? 'profile_communities_explore' : 'profile_communities', handle: userCommunitiesMatch[1] };
+                    }
+                    const profileMatch = path.match(/^\/([a-zA-Z0-9_]+)(\/(with_replies|highlights|likes|lists))?$/);
+                    if (profileMatch) {
+                        const reservedPaths = ['home', 'explore', 'notifications', 'messages', 'i', 'settings', 'communities'];
+                        if (!reservedPaths.includes(profileMatch[1])) {
+                            if (profileMatch[3] === 'lists') {
+                                return { type: 'list_hub', handle: profileMatch[1] };
+                            }
+                            return { type: 'profile', handle: profileMatch[1], subpage: profileMatch[3] || 'tweets' };
+                        }
+                    }
+                    return { type: 'unknown' };
+                };
+                let path = window.location.pathname;
+                if (path.length > 1 && path.endsWith('/')) { path = path.slice(0, -1); }
+                const pageInfo = getPageType(path);
 
-                if (!isPostPage && !isHomePage && !isProfilePage) {
-                    alert('Postscope works on a specific post, a user profile, or the home timeline. Please navigate to one and try again.');
+                if (pageInfo.type === 'list_hub') {
+                    alert("Postscope works on individual lists. Please navigate into one of the lists on this page and then click the bookmarklet again.");
                     return;
                 }
 
+                const supportedPages = ['post', 'home', 'explore', 'bookmarks', 'communities', 'list', 'profile', 'profile_communities', 'profile_communities_explore', 'search'];
+                if (!supportedPages.includes(pageInfo.type)) {
+                    alert('Postscope works on posts, profiles, timelines, searches, lists, and communities. Please navigate to a supported page and try again.');
+                    return;
+                }
+                const mainContentArea = await waitForElement('main[role="main"]');
+                if (!mainContentArea) {
+                    alert("Could not find Twitter/X content on this page. Please wait for the page to load and try again.");
+                    return;
+                }
                 let userCancelled = false;
-                let discoverySectionFound = false;
-
+                let isPausedForRetry = false;
+                const updateOverlay = (state, retryCallback) => {
+                    const statusEl = document.getElementById('postscope-status');
+                    const overlayContentDiv = statusEl?.parentElement;
+                    if (!overlayContentDiv) return;
+                    
+                    const oldRetryBtn = document.getElementById('postscope-retry-btn');
+                    if (oldRetryBtn) oldRetryBtn.remove();
+                    
+                    if (state === 'retry') {
+                        statusEl.innerHTML = 'Network issue detected.<br>What would you like to do?';
+                        const retryBtn = document.createElement('button');
+                        retryBtn.id = 'postscope-retry-btn';
+                        retryBtn.textContent = 'Retry Loading';
+                        retryBtn.style.cssText = 'padding: 10px 20px; font-size: 1rem; color: #333; background: #cceeff; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;';
+                        retryBtn.onclick = retryCallback;
+                        overlayContentDiv.insertBefore(retryBtn, document.getElementById('postscope-stop-btn'));
+                    } else { // 'collecting'
+                        statusEl.innerHTML = 'Postscope is collecting posts...';
+                    }
+                };
                 const createOverlay = () => {
                     const overlay = document.createElement('div');
                     overlay.id = 'postscope-overlay';
                     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background-color:rgba(0,0,0,0.7);z-index:99999;display:flex;justify-content:center;align-items:center;color:white;font-family:sans-serif;';
-                    overlay.innerHTML = `<div style="text-align: center; padding: 20px 40px; background: #222; border-radius: 10px;">
-                        <h2 id="postscope-status">Postscope is collecting posts...</h2>
-                        <p>Please keep this tab open and in view.</p>
-                        <p id="postscope-count" style="font-size: 1.2em; font-weight: bold; margin: 15px 0;">Found 0 posts</p>
-                        <button id="postscope-stop-btn" style="padding: 10px 20px; font-size: 1rem; color: #333; background: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">Stop & Visualize</button>
-                    </div>`;
+                    overlay.innerHTML = `<div style="text-align: center; padding: 20px 40px; background: #222; border-radius: 10px;"><h2 id="postscope-status">Postscope is collecting posts...</h2><p>Please keep this tab open and in view.</p><p id="postscope-count" style="font-size: 1.2em; font-weight: bold; margin: 15px 0;">Found 0 posts</p><button id="postscope-stop-btn" style="padding: 10px 20px; font-size: 1rem; color: #333; background: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">Stop & Visualize</button></div>`;
                     document.body.appendChild(overlay);
                     document.getElementById('postscope-stop-btn').onclick = () => {
                         document.getElementById('postscope-status').textContent = 'Finalizing...';
@@ -129,82 +190,145 @@
                     };
                     return overlay;
                 };
-
                 const updateStatus = (count) => {
                     const countEl = document.getElementById('postscope-count');
                     if (countEl) countEl.textContent = `Found ${count} posts`;
                 };
-
-                const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-                
-                const context = { type: '', author: '', text: '' };
-                if (isPostPage) {
-                    context.type = 'post';
-                    const mainPostArticle = document.querySelector('article[data-testid="tweet"]');
-                    context.author = mainPostArticle?.querySelector('div[data-testid="User-Name"] a[href^="/"]')?.href.split('/').pop() || 'unknown';
-                    context.text = mainPostArticle?.querySelector('[data-testid="tweetText"]')?.innerText.substring(0, 100) + '...' || 'Unknown Tweet';
-                } else if (isHomePage) {
-                    context.type = 'home';
-                } else if (isProfilePage) {
-                    context.type = 'profile';
-                    context.author = path.substring(1);
+                const context = { version: SCRIPT_VERSION, type: pageInfo.type, name: '', author: '', text: '', subpage: '', query: '', filter: '' };
+                let originalPosterHandle = null;
+                let filterByProfileOwner = false;
+                if (pageInfo.type === 'list' || pageInfo.type === 'communities') {
+                    const headerEl = await waitForElement('h2[role="heading"] span', mainContentArea);
+                    if (headerEl) {
+                        context.name = headerEl.innerText.trim();
+                    } else if (pageInfo.type === 'list') {
+                        const titleMatch = document.title.match(/^(.+?)\s*(\(@\w+\))?\s*\/\s*X$/);
+                        if (titleMatch && titleMatch[1]) context.name = titleMatch[1].trim();
+                    }
+                } else if (pageInfo.type === 'post') {
+                    const mainPostArticle = await waitForElement('article[data-testid="tweet"]', mainContentArea);
+                    if (!mainPostArticle) { alert("Could not find the main post. Please wait for it to load and try again."); return; }
+                    originalPosterHandle = mainPostArticle.querySelector('div[data-testid="User-Name"] a[href^="/"]')?.href.split('/').pop() || 'unknown';
+                    context.author = originalPosterHandle;
+                    context.text = mainPostArticle.querySelector('[data-testid="tweetText"]')?.innerText.substring(0, 100) + '...' || 'Unknown Tweet';
+                } else if (pageInfo.type === 'profile') {
+                    context.author = pageInfo.handle;
+                    context.subpage = pageInfo.subpage;
+                    if (pageInfo.subpage !== 'likes') filterByProfileOwner = true;
+                } else if (pageInfo.type === 'profile_communities' || pageInfo.type === 'profile_communities_explore') {
+                    context.author = pageInfo.handle;
+                } else if (pageInfo.type === 'search') {
+                    context.query = pageInfo.query;
+                    context.filter = pageInfo.filter;
                 }
-
                 const overlay = createOverlay();
+                
+                const visibleSpinners = new Set();
+                const intersectionObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) visibleSpinners.add(entry.target);
+                        else visibleSpinners.delete(entry.target);
+                    });
+                });
+                const mutationObserver = new MutationObserver((mutations) => {
+                    for (const mutation of mutations) {
+                        for (const node of mutation.addedNodes) {
+                            if (node.nodeType === 1) {
+                                if (node.matches('[role="progressbar"]')) intersectionObserver.observe(node);
+                                node.querySelectorAll('[role="progressbar"]').forEach(spinner => intersectionObserver.observe(spinner));
+                            }
+                        }
+                    }
+                });
+                document.querySelectorAll('[role="progressbar"]').forEach(spinner => intersectionObserver.observe(spinner));
+                mutationObserver.observe(document.body, { childList: true, subtree: true });
+
                 let previousHeight = -1;
+                let previousTweetCount = -1;
                 let stuckCount = 0;
                 const foundTweets = new Set();
-                let scrapedData = 'author,text,likes\n';
+                let scrapedData = 'author,text,likes,timestamp\n';
+                
+                console.log('Postscope: Scrolling to top to begin collection.');
+                window.scrollTo(0, 0);
+                await wait(500);
 
                 while (!userCancelled) {
-                    const mainContentArea = document.querySelector('main[role="main"]');
-                    const cells = (mainContentArea || document).querySelectorAll('div[data-testid="cellInnerDiv"]');
-
+                    if (isPausedForRetry) {
+                        await wait(200);
+                        continue;
+                    }
+                    const cells = mainContentArea.querySelectorAll('div[data-testid="cellInnerDiv"]');
                     for (const cell of cells) {
-                        if (cell.querySelector('h2[role="heading"] span, h2[dir="auto"] > span')?.innerText.trim().toLowerCase() === 'discover more') {
-                            discoverySectionFound = true; break;
-                        }
-                        if (cell.querySelector('div[role="button"] span')?.innerText.toLowerCase().includes('show replies')) continue;
-                        
                         const article = cell.querySelector('article[data-testid="tweet"]');
                         if (!article) continue;
+                        
+                        const adMarker = Array.from(article.querySelectorAll('span')).find(span => span.innerText.trim() === 'Ad');
+                        if (adMarker) {
+                            console.log('Postscope: Skipping an ad post.');
+                            continue;
+                        }
 
                         const tweetTextElement = article.querySelector('[data-testid="tweetText"]');
                         const authorHandle = article.querySelector('div[data-testid="User-Name"] a[href^="/"]')?.href.split('/').pop();
                         const likeAriaLabel = article.querySelector('[data-testid="like"]')?.getAttribute('aria-label') || '0';
                         const likeMatch = likeAriaLabel.match(/(\d[\d,]*)/);
                         const likes = likeMatch ? parseInt(likeMatch[1].replace(/,/g, ''), 10) : 0;
-                        
-                        if (tweetTextElement && authorHandle) {
-                            const text = tweetTextElement.innerText;
-                            if (!foundTweets.has(text)) {
-                                foundTweets.add(text);
-                                updateStatus(foundTweets.size);
-                                const sanitizedText = text.replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
-                                scrapedData += `"${authorHandle}","${sanitizedText}","${likes}"\n`;
-                            }
+                        const timeElement = article.querySelector('time[datetime]');
+                        const postTimestamp = timeElement ? timeElement.getAttribute('datetime') : '';
+                        if (!tweetTextElement || !authorHandle) continue;
+                        if (pageInfo.type === 'post' && authorHandle === originalPosterHandle) continue;
+                        if (filterByProfileOwner && authorHandle !== pageInfo.handle) continue;
+                        const text = tweetTextElement.innerText;
+                        const uniqueKey = authorHandle + text + postTimestamp;
+                        if (!foundTweets.has(uniqueKey)) {
+                            foundTweets.add(uniqueKey);
+                            updateStatus(foundTweets.size);
+                            const sanitizedText = text.replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
+                            scrapedData += `"${authorHandle}","${sanitizedText}","${likes}","${postTimestamp}"\n`;
                         }
                     }
-
-                    if (discoverySectionFound) {
-                        userCancelled = true;
-                        document.getElementById('postscope-status').textContent = 'Reached "Discover More". Finalizing...';
-                        await wait(1000);
-                        continue;
-                    }
-
-                    window.scrollTo(0, document.body.scrollHeight);
-                    await wait(1500);
                     
+                    const retryButtonOnPage = Array.from(document.querySelectorAll('[role="button"]')).find(el => el.innerText.trim() === 'Retry');
+
+                    if (retryButtonOnPage) {
+                        console.log('Postscope: "Retry" button detected. Pausing for user input.');
+                        isPausedForRetry = true;
+                        updateOverlay('retry', () => {
+                            console.log('Postscope: User chose to retry. Resuming...');
+                            if (retryButtonOnPage) retryButtonOnPage.click();
+                            updateOverlay('collecting');
+                            stuckCount = 0;
+                            isPausedForRetry = false;
+                        });
+                    }
+                    
+                    window.scrollTo(0, document.body.scrollHeight);
+                    await wait(200);
+
                     const currentHeight = document.body.scrollHeight;
-                    if (previousHeight !== -1 && currentHeight === previousHeight) stuckCount++; else stuckCount = 0;
-                    if (stuckCount >= 3) {
+                    const currentTweetCount = foundTweets.size;
+                    const isLoading = visibleSpinners.size > 0 && window.scrollY > 100;
+
+                    console.log(`Postscope Debug: stuck=${stuckCount}, scrollY=${Math.round(window.scrollY)}, posts=${currentTweetCount}, loading=${isLoading}`);
+
+                    if (isLoading) {
+                        stuckCount = 0;
+                    } else if (previousHeight !== -1 && currentHeight <= previousHeight && currentTweetCount === previousTweetCount) {
+                        stuckCount++;
+                    } else {
+                        stuckCount = 0;
+                    }
+                    if (stuckCount >= 25) {
                         userCancelled = true;
                         document.getElementById('postscope-status').textContent = 'Reached end of content. Finalizing...';
-                        await wait(1000);
                     }
                     previousHeight = currentHeight;
+                    previousTweetCount = currentTweetCount;
                 }
+
+                intersectionObserver.disconnect();
+                mutationObserver.disconnect();
 
                 if (foundTweets.size > 0) {
                     const encodedData = btoa(unescape(encodeURIComponent(scrapedData)));

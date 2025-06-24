@@ -1,5 +1,11 @@
 import { vizStore } from '../services/visualizationStore.js';
 
+// Helper function to truncate long strings
+const truncate = (str, maxLength) => {
+    if (!str || str.length <= maxLength) return str;
+    return str.substring(0, maxLength) + '...';
+};
+
 export class HistoryManager {
     constructor() {
         // This class no longer manages state directly.
@@ -56,6 +62,7 @@ export class HistoryManager {
                         author: row.author || 'unknown', 
                         content: row.text || '', 
                         likes: parseInt(row.likes || '0', 10),
+                        timestamp: row.timestamp || null,
                         originalText: row.text || ''
                     }))
                     .filter(item => item.content);
@@ -87,9 +94,34 @@ export class HistoryManager {
 
         let name = 'Untitled Visualization';
         if (context) {
-            if (context.type === 'post') name = `Replies to @${context.author}`;
-            else if (context.type === 'profile') name = `Profile of @${context.author}`;
-            else if (context.type === 'home') name = `Home Timeline Visualization`;
+            const truncatedName = truncate(context.name, 40);
+            if (truncatedName) { // Prioritize scraped name for Lists/Communities
+                if (context.type === 'list') name = `List: ${truncatedName}`;
+                else if (context.type === 'communities') name = `Community: ${truncatedName}`;
+                else name = truncatedName;
+            } else { // Fallback to type-based names
+                switch (context.type) {
+                    case 'post': name = `Replies to @${truncate(context.author, 30)}`; break;
+                    case 'profile': name = `Profile: @${truncate(context.author, 30)} (${context.subpage || 'tweets'})`; break;
+                    case 'home': name = `Home Timeline`; break;
+                    case 'explore': name = `Explore Timeline`; break;
+                    case 'bookmarks': name = `Bookmarks`; break;
+                    case 'list': name = `List Visualization`; break;
+                    case 'communities': name = `Community Visualization`; break;
+                    case 'profile_communities': name = `Communities for @${truncate(context.author, 30)}`; break;
+                    case 'profile_communities_explore': name = `Explore Communities for @${truncate(context.author, 30)}`; break;
+                    case 'search':
+                        const filterMap = { live: 'Latest', user: 'People', image: 'Media' };
+                        let filterName = 'Top'; // Default to 'Top' if no filter is specified
+                        if (context.filter) {
+                            filterName = filterMap[context.filter] || context.filter;
+                        }
+                        const truncatedQuery = truncate(context.query, 40);
+                        name = `Search: "${truncatedQuery}" (${filterName})`;
+                        break;
+                    default: name = 'Untitled Visualization';
+                }
+            }
         }
 
         const newEntry = {

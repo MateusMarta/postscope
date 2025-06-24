@@ -1,5 +1,11 @@
 function debounce(func, delay) { let timeout; return function(...args) { const context = this; clearTimeout(timeout); timeout = setTimeout(() => func.apply(context, args), delay); }; }
 
+// Helper function to truncate long strings
+const truncate = (str, maxLength) => {
+    if (!str || str.length <= maxLength) return str;
+    return str.substring(0, maxLength) + '...';
+};
+
 export class UIController {
     constructor({ onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, getMapInstance }) {
         this.callbacks = { onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange };
@@ -13,6 +19,7 @@ export class UIController {
         this.titleAreaEl = document.getElementById('visualization-title-area');
         this.clusterListContainer = document.getElementById('cluster-list-container');
         this.responseListContainer = document.getElementById('response-list-container');
+        this.versionNotificationArea = document.getElementById('version-notification-area');
         this.controlsPanel = document.querySelector('.controls-panel');
         this.visualizationPanel = document.querySelector('.visualization-panel');
 
@@ -53,6 +60,16 @@ export class UIController {
         this.statusArea.innerHTML = `<div class="error-container"><p>${message}</p></div>`;
         this.disableControls();
         this.reclusterButton.style.display = 'none';
+    }
+
+    showVersionWarning() {
+        if (!this.versionNotificationArea) return;
+        this.versionNotificationArea.innerHTML = `<div class="version-warning-banner">
+            <div>
+                <p class="font-semibold">Your bookmarklet is out of date.</p>
+                <p class="mt-1">For the best experience and new features, please get the latest version from the <a href="index.html" target="_blank" rel="noopener noreferrer">Postscope homepage</a>.</p>
+            </div>
+        </div>`;
     }
 
     disableControls() {
@@ -134,13 +151,50 @@ export class UIController {
             this.sourceInfoEl.style.display = 'none';
             return;
         }
+
         let html = '';
-        if (context.type === 'post') {
-            html = `<p>Visualizing <b>${postCount}</b> replies for tweet by <b>@${context.author}</b>:</p><blockquote>${context.text}</blockquote>`;
-        } else if (context.type === 'profile') {
-            html = `<p>Visualizing <b>${postCount}</b> tweets from profile: <b>@${context.author}</b></p>`;
-        } else if (context.type === 'home') {
-            html = `<p>Visualizing <b>${postCount}</b> tweets from your <b>Home Timeline</b></p>`;
+        const nameText = context.name ? `<b>${truncate(context.name, 100)}</b>` : '';
+
+        switch (context.type) {
+            case 'post':
+                html = `<p>Visualizing <b>${postCount}</b> replies for post by <b>@${truncate(context.author, 30)}</b>:</p><blockquote>${truncate(context.text, 150)}</blockquote>`;
+                break;
+            case 'profile':
+                html = `<p>Visualizing <b>${postCount}</b> posts from profile: <b>@${truncate(context.author, 30)} (${context.subpage || 'tweets'})</b></p>`;
+                break;
+            case 'home':
+                html = `<p>Visualizing <b>${postCount}</b> posts from your <b>Home Timeline</b></p>`;
+                break;
+            case 'explore':
+                html = `<p>Visualizing <b>${postCount}</b> posts from <b>Explore</b></p>`;
+                break;
+            case 'bookmarks':
+                html = `<p>Visualizing <b>${postCount}</b> posts from your <b>Bookmarks</b></p>`;
+                break;
+            case 'list':
+                html = `<p>Visualizing <b>${postCount}</b> posts from the List: ${nameText || '<i>Unknown List</i>'}</p>`;
+                break;
+            case 'communities':
+                html = `<p>Visualizing <b>${postCount}</b> posts from the Community: ${nameText || '<i>Unknown Community</i>'}</p>`;
+                break;
+            case 'profile_communities':
+                html = `<p>Visualizing <b>${postCount}</b> posts from communities for <b>@${truncate(context.author, 30)}</b></p>`;
+                break;
+            case 'profile_communities_explore':
+                html = `<p>Visualizing <b>${postCount}</b> posts from explored communities for <b>@${truncate(context.author, 30)}</b></p>`;
+                break;
+            case 'search':
+                const filterMap = { live: 'Latest', user: 'People', image: 'Media' };
+                let filterName = 'Top'; // Default to 'Top' if no filter is specified
+                if (context.filter) {
+                    filterName = filterMap[context.filter] || context.filter;
+                }
+                const filterText = ` on the <b>${filterName}</b> tab`;
+                html = `<p>Visualizing <b>${postCount}</b> posts from search${filterText}:</p><blockquote>${truncate(context.query, 150)}</blockquote>`;
+                break;
+            default:
+                html = `<p>Visualizing <b>${postCount}</b> posts.</p>`;
+                break;
         }
         this.sourceInfoEl.innerHTML = html;
         this.sourceInfoEl.style.display = 'block';
@@ -275,7 +329,19 @@ export class UIController {
         clusterItems.forEach(item => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'response-item';
-            itemDiv.innerHTML = `<b>@${item.author}</b> <span style="color:#666; font-size:0.9em;">(❤️ ${item.likes})</span><br>${item.content}`;
+            
+            let timestampHtml = '';
+            if (item.timestamp) {
+                try {
+                    const date = new Date(item.timestamp);
+                    const formattedDate = date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                    timestampHtml = `<span class="text-slate-500 text-xs ml-2">• ${formattedDate}</span>`;
+                } catch (e) {
+                    console.warn("Could not parse timestamp:", item.timestamp, e);
+                }
+            }
+
+            itemDiv.innerHTML = `<div><b>@${item.author}</b> <span class="text-slate-500 text-xs">(❤️ ${item.likes})</span>${timestampHtml}</div><div class="mt-1">${item.content}</div>`;
             detailView.appendChild(itemDiv);
         });
         

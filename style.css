@@ -13,6 +13,12 @@
     .info-banner p {
         @apply m-0 flex-1;
     }
+    .version-warning-banner {
+        @apply text-sm p-4 bg-amber-50 border border-amber-300 text-amber-900 rounded-lg flex items-start gap-3;
+    }
+    .version-warning-banner a {
+        @apply font-bold underline hover:text-amber-700;
+    }
     .error-container {
         @apply text-center p-4 bg-red-50 border-l-4 border-red-500 text-red-800 mt-4 rounded-md;
     }

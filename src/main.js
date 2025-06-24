@@ -4,6 +4,8 @@ import { UIController } from './ui/uiController.js';
 import { AnalysisPipeline } from './analysis/analysisPipeline.js';
 import { EmbeddingVisualizer } from './ui/EmbeddingVisualizer.js';
 
+const CURRENT_BOOKMARKLET_VERSION = 2;
+
 document.addEventListener('DOMContentLoaded', async () => {
     const appState = new AppState();
     const historyManager = new HistoryManager();
@@ -103,12 +105,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     } else {
         // --- PATH B: Run new analysis ---
-        if (!data || data.length === 0) {
+        if (!context || !data || data.length === 0) {
             const isHomePage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
             if (!isHomePage) {
                ui.showError("No data found. Please use the Postscope bookmarklet on a Twitter/X page.");
             }
             return;
+        }
+
+        // Version Check
+        if (!context.version || context.version < CURRENT_BOOKMARKLET_VERSION) {
+            ui.showVersionWarning();
         }
         
         const visName = historyEntry ? historyEntry.name : 'Untitled Visualization';

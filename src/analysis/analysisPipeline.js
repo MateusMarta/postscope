@@ -62,7 +62,7 @@ export class AnalysisPipeline {
 
         const nNeighbors = Math.min(15, allItems.length - 1);
         if (nNeighbors < 2) {
-            throw new Error(`Not enough data points (${allItems.length}) to create a map. Please collect at least 15 posts for a good visualization.`);
+            throw new Error(`Not enough data points to create a map.`);
         }
         
         // Create a single, shared random number generator for the entire pipeline.
