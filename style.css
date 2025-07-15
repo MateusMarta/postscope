@@ -74,6 +74,41 @@
         @apply text-slate-900 font-semibold;
     }
 
+    /* Custom styles for the map popup */
+    .post-popup .maplibregl-popup-content {
+        @apply p-0 bg-white rounded-lg shadow-xl border border-slate-200 font-sans;
+        max-width: 320px !important; /* Override maplibre's max-width */
+        font-size: 14px;
+    }
+
+    .post-popup .maplibregl-popup-tip {
+        border-top-color: white; /* Make the little arrow match the popup bg */
+    }
+
+    .post-popup-content {
+        @apply p-3;
+    }
+
+    .popup-header {
+        @apply flex items-baseline gap-2 mb-2 text-slate-600;
+    }
+    .popup-author {
+        @apply font-bold text-slate-900;
+    }
+    .popup-timestamp {
+        @apply text-xs whitespace-nowrap;
+    }
+
+    .popup-body {
+        @apply text-slate-800 leading-snug;
+        word-wrap: break-word;
+    }
+
+    .popup-footer {
+        @apply mt-2 text-red-500 font-semibold text-xs flex items-center;
+    }
+
+
     /* For index.html dynamic pagination */
     #pagination-controls button.active {
         @apply bg-sky-600 border-sky-600 text-white;

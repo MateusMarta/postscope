@@ -4,6 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 export class EmbeddingVisualizer {
     constructor({ containerId }) {
         this.containerId = containerId;
+        this.popup = null; // To hold the popup instance
+
         this.map = new maplibregl.Map({
             container: containerId,
             renderWorldCopies: false,
@@ -23,10 +25,72 @@ export class EmbeddingVisualizer {
             zoom: 1
         });
         
-        this.map.on('load', () => this._setupInitialLayers());
+        this.map.on('load', () => {
+            this._setupInitialLayers();
+            
+            // Handle clicking on a point to open the post
+            this.map.on('click', 'points-circles', (e) => {
+                if (e.features?.[0]?.properties?.url) {
+                    window.open(e.features[0].properties.url, '_blank', 'noopener,noreferrer');
+                }
+            });
+
+            // Change cursor and show popup on hover
+            this.map.on('mouseenter', 'points-circles', (e) => {
+                this.map.getCanvas().style.cursor = 'pointer';
+                const properties = e.features[0].properties;
+                this._createPopup(e.lngLat, properties);
+            });
+            this.map.on('mouseleave', 'points-circles', () => {
+                this.map.getCanvas().style.cursor = '';
+                this._removePopup();
+            });
+        });
     }
 
     getMapInstance = () => this.map;
+
+    _createPopup(coordinates, properties) {
+        this._removePopup(); // Remove any existing popup
+
+        let timestampHtml = '';
+        if (properties.timestamp) {
+            try {
+                const date = new Date(properties.timestamp);
+                const formattedDate = date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                timestampHtml = `<span class="popup-timestamp">• ${formattedDate}</span>`;
+            } catch (e) { /* ignore invalid date */ }
+        }
+
+        const popupContent = `
+            <div class="post-popup-content">
+                <div class="popup-header">
+                    <strong class="popup-author">@${properties.author}</strong>
+                    ${timestampHtml}
+                </div>
+                <div class="popup-body">${properties.text}</div>
+                <div class="popup-footer">
+                    <span class="popup-likes">❤️ ${properties.likes}</span>
+                </div>
+            </div>
+        `;
+        
+        this.popup = new maplibregl.Popup({
+            closeButton: false,
+            closeOnClick: false,
+            className: 'post-popup'
+        })
+        .setLngLat(coordinates)
+        .setHTML(popupContent)
+        .addTo(this.map);
+    }
+    
+    _removePopup() {
+        if (this.popup) {
+            this.popup.remove();
+            this.popup = null;
+        }
+    }
 
     _setupInitialLayers() {
         this.map.addSource('points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -125,7 +189,14 @@ export class EmbeddingVisualizer {
 
         const geojson = { type: "FeatureCollection", features: pointsData.map((point, i) => ({
             type: "Feature", geometry: { type: "Point", coordinates: [twoDimCoords[i][0], twoDimCoords[i][1]] },
-            properties: { text: point.content, originalText: point.originalText, cluster_label: labels[i], likes: point.likes || 0 }
+            properties: { 
+                text: point.content, 
+                author: point.author,
+                timestamp: point.timestamp,
+                likes: point.likes || 0,
+                url: point.url,
+                cluster_label: labels[i]
+            }
         }))};
         this.map.getSource('points').setData(geojson);
         

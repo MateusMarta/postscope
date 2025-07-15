@@ -271,7 +271,7 @@
                 let previousTweetCount = -1;
                 let stuckCount = 0;
                 const foundTweets = new Set();
-                let scrapedData = 'author,text,likes,timestamp\n';
+                let scrapedData = 'author,text,likes,timestamp,url\n';
                 
                 console.log('Postscope: Scrolling to top to begin collection.');
                 window.scrollTo(0, 0);
@@ -300,16 +300,18 @@
                         const likes = likeMatch ? parseInt(likeMatch[1].replace(/,/g, ''), 10) : 0;
                         const timeElement = article.querySelector('time[datetime]');
                         const postTimestamp = timeElement ? timeElement.getAttribute('datetime') : '';
+                        const postLinkElement = timeElement ? timeElement.closest('a') : null;
+                        const postUrl = postLinkElement ? postLinkElement.href : '';
                         if (!tweetTextElement || !authorHandle) continue;
                         if (pageInfo.type === 'post' && authorHandle === originalPosterHandle) continue;
                         if (filterByProfileOwner && authorHandle !== pageInfo.handle) continue;
                         const text = tweetTextElement.innerText;
-                        const uniqueKey = authorHandle + text + postTimestamp;
+                        const uniqueKey = postUrl || (authorHandle + text + postTimestamp);
                         if (!foundTweets.has(uniqueKey)) {
                             foundTweets.add(uniqueKey);
                             updateStatus(foundTweets.size);
                             const sanitizedText = text.replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
-                            scrapedData += `"${authorHandle}","${sanitizedText}","${likes}","${postTimestamp}"\n`;
+                            scrapedData += `"${authorHandle}","${sanitizedText}","${likes}","${postTimestamp}","${postUrl}"\n`;
                         }
                     }
                     

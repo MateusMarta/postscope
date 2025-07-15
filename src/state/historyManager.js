@@ -63,6 +63,7 @@ export class HistoryManager {
                         content: row.text || '', 
                         likes: parseInt(row.likes || '0', 10),
                         timestamp: row.timestamp || null,
+                        url: row.url || null,
                         originalText: row.text || ''
                     }))
                     .filter(item => item.content);
