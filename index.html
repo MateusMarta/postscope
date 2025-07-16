@@ -123,8 +123,23 @@
         (function() {
             const appUrl = 'https://postscope.pages.dev/viewer.html';
             const scraperFunction = async (redirectUrl) => {
-                const SCRIPT_VERSION = 3;
+                const SCRIPT_VERSION = 4;
                 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+                if (window.location.hostname === 'x.com' && window.location.pathname === '/') {
+                    console.log('Postscope: on x.com, waiting for redirect to /home...');
+                    const startTime = Date.now();
+                    while (window.location.pathname === '/' && (Date.now() - startTime) < 5000) { // 5 second timeout
+                        await wait(100);
+                    }
+
+                    if (window.location.pathname === '/') {
+                        alert('Postscope: Timed out waiting for x.com to redirect. Please try again once you are on your home timeline.');
+                        return;
+                    }
+                    console.log('Postscope: Redirected to', window.location.pathname);
+                }
+                
                 const waitForElement = async (selector, context = document, timeout = 10000) => {
                     const start = Date.now();
                     while (Date.now() - start < timeout) {

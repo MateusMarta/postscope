@@ -4,7 +4,7 @@ import { UIController } from './ui/uiController.js';
 import { AnalysisPipeline } from './analysis/analysisPipeline.js';
 import { EmbeddingVisualizer } from './ui/EmbeddingVisualizer.js';
 
-const CURRENT_BOOKMARKLET_VERSION = 3;
+const CURRENT_BOOKMARKLET_VERSION = 4;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const appState = new AppState();
