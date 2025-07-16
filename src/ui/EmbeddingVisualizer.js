@@ -58,7 +58,7 @@ export class EmbeddingVisualizer {
             try {
                 const date = new Date(properties.timestamp);
                 const formattedDate = date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-                timestampHtml = `<span class="popup-timestamp">• ${formattedDate}</span>`;
+                timestampHtml = `<span class="popup-timestamp">${formattedDate}</span>`;
             } catch (e) { /* ignore invalid date */ }
         }
 

@@ -96,13 +96,13 @@
     }
 
     .popup-header {
-        @apply flex items-baseline gap-2 mb-2 text-slate-600;
+        @apply flex flex-col mb-2;
     }
     .popup-author {
         @apply font-bold text-slate-900;
     }
     .popup-timestamp {
-        @apply text-xs whitespace-nowrap;
+        @apply text-xs text-slate-500;
     }
 
     .popup-body {
