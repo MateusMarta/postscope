@@ -96,6 +96,7 @@ export class EmbeddingVisualizer {
         this.map.addSource('points', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         this.map.addSource('query-point', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         this.map.addSource('cluster-names', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+        this.map.addSource('highlight-point', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
 
         this.map.addLayer({
             id: 'point-labels',
@@ -119,6 +120,16 @@ export class EmbeddingVisualizer {
             id: 'cluster-name-labels', type: 'symbol', source: 'cluster-names',
             layout: { 'text-field': ['get', 'name'], 'text-size': 16, 'text-font': ["Noto Sans Bold"], 'text-allow-overlap': true, 'text-ignore-placement': true },
             paint: { 'text-color': ['get', 'color'], 'text-halo-color': '#ffffff', 'text-halo-width': 2, 'text-halo-blur': 1 }
+        });
+
+        this.map.addLayer({
+            id: 'highlight-point-circle', type: 'circle', source: 'highlight-point',
+            paint: {
+                'circle-radius': 12,
+                'circle-color': 'rgba(0,0,0,0)',
+                'circle-stroke-width': 3,
+                'circle-stroke-color': '#0ea5e9' // sky-500
+            }
         });
 
         this.map.addLayer({
@@ -245,6 +256,29 @@ export class EmbeddingVisualizer {
         source.setData({ type: "FeatureCollection", features: [{
             type: "Feature", geometry: { type: "Point", coordinates: [coords[0], coords[1]] }, properties: { text }
         }]});
+    }
+
+    highlightPoint(coords) {
+        if (!this.map.isStyleLoaded()) {
+            this.map.once('load', () => this.highlightPoint(coords));
+            return;
+        }
+        const source = this.map.getSource('highlight-point');
+        if (!source) return;
+
+        if (!coords) {
+            source.setData({ type: 'FeatureCollection', features: [] });
+            return;
+        }
+        
+        source.setData({
+            type: "FeatureCollection",
+            features: [{
+                type: "Feature",
+                geometry: { type: "Point", coordinates: coords },
+                properties: {}
+            }]
+        });
     }
 
     togglePointLabels() {

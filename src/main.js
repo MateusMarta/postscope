@@ -71,6 +71,16 @@ document.addEventListener('DOMContentLoaded', async () => {
            ui.updateToggleLabelsButton(newVisibility);
            saveCurrentState();
         },
+        onPostSelect: (index) => {
+            if (index === null) {
+                visualizer.highlightPoint(null);
+                return;
+            }
+            const coords = appState.getData2D()[index];
+            if (coords) {
+                visualizer.highlightPoint(coords);
+            }
+        },
         getMapInstance: () => visualizer.getMapInstance()
     });
 

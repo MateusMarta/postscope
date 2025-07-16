@@ -68,7 +68,13 @@
         @apply p-4 grid gap-2;
     }
     .response-item {
-        @apply bg-slate-50 rounded-md p-3 text-sm leading-snug border border-slate-200/80;
+        @apply bg-slate-50 rounded-md p-3 text-sm leading-snug border border-slate-200/80 cursor-pointer transition-colors hover:border-slate-300;
+    }
+    .response-item:hover {
+        @apply bg-slate-100;
+    }
+    .response-item.active {
+        @apply bg-sky-100 border-sky-400 ring-2 ring-sky-300;
     }
     .response-item b {
         @apply text-slate-900 font-semibold;

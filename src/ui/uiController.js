@@ -7,8 +7,8 @@ const truncate = (str, maxLength) => {
 };
 
 export class UIController {
-    constructor({ onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, getMapInstance }) {
-        this.callbacks = { onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange };
+    constructor({ onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, getMapInstance, onPostSelect }) {
+        this.callbacks = { onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, onPostSelect };
         
         this.minClusterSizeEl = document.getElementById('min-cluster-size');
         this.reclusterButton = document.getElementById('recluster-button');
@@ -43,6 +43,34 @@ export class UIController {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 this.callbacks.onRecluster();
+            }
+        });
+
+        this.responseListContainer.addEventListener('click', (e) => {
+            const responseItem = e.target.closest('.response-item');
+            if (!responseItem || !responseItem.dataset.originalIndex) return;
+
+            const index = parseInt(responseItem.dataset.originalIndex, 10);
+            const isAlreadyActive = responseItem.classList.contains('active');
+
+            // Always clear any existing active item first.
+            const currentActive = this.responseListContainer.querySelector('.response-item.active');
+            if (currentActive) {
+                currentActive.classList.remove('active');
+            }
+
+            if (isAlreadyActive) {
+                // If the clicked item was the one that was active, we just deselect it
+                // and clear the highlight.
+                if (this.callbacks.onPostSelect) {
+                    this.callbacks.onPostSelect(null);
+                }
+            } else {
+                // If it was a new item, we select it and highlight it on the map.
+                responseItem.classList.add('active');
+                if (this.callbacks.onPostSelect) {
+                    this.callbacks.onPostSelect(index);
+                }
             }
         });
     }
@@ -229,7 +257,11 @@ export class UIController {
         const labelToCustIdMap = appState.getLabelToCustIdMap();
 
         const clusters = {};
-        items.forEach((item, i) => { const label = labels[i]; if (!clusters[label]) clusters[label] = []; clusters[label].push(item); });
+        items.forEach((item, i) => { 
+            const label = labels[i]; 
+            if (!clusters[label]) clusters[label] = []; 
+            clusters[label].push({ ...item, originalIndex: i }); 
+        });
         
         const sortedNumericLabels = Object.keys(clusters).map(l => parseInt(l, 10)).sort((a, b) => { if (a === -1) return 1; if (b === -1) return -1; return a - b; });
         const uniqueClusterLabels = sortedNumericLabels.filter(l => l !== -1);
@@ -314,9 +346,15 @@ export class UIController {
         }
         this.responseListContainer.innerHTML = '';
         this.responseListContainer.style.display = 'none';
+
+        if (this.callbacks.onPostSelect) {
+            this.callbacks.onPostSelect(null);
+        }
     }
 
     _handleClusterSelection(label, allClusters, isRerender = false) {
+        const shouldResetScroll = !isRerender;
+
         if (!isRerender) {
             const currentActive = this.clusterListContainer.querySelector('.cluster-item.active');
             if(currentActive && currentActive.dataset.label == label) {
@@ -339,6 +377,7 @@ export class UIController {
         clusterItems.forEach(item => {
             const itemDiv = document.createElement('div');
             itemDiv.className = 'response-item';
+            itemDiv.dataset.originalIndex = item.originalIndex;
             
             let timestampHtml = '';
             if (item.timestamp) {
@@ -356,5 +395,9 @@ export class UIController {
         });
         
         this.responseListContainer.appendChild(detailView);
+
+        if (shouldResetScroll) {
+            this.responseListContainer.scrollTop = 0;
+        }
     }
 }
