@@ -144,7 +144,7 @@
 
     /* Custom styles for the map popup */
     .post-popup .maplibregl-popup-content {
-        @apply p-0 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 font-sans;
+        @apply p-0 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 font-sans;
         max-width: 320px !important;
         font-size: 14px;
     }
@@ -153,7 +153,7 @@
         border-top-color: white;
     }
     .dark .post-popup .maplibregl-popup-tip {
-        border-top-color: #1e293b; /* slate-800 */
+        border-top-color: #0f172a; /* slate-900 */
     }
 
     .post-popup-content { @apply p-3; }
