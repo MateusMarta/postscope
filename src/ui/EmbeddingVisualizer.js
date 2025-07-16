@@ -10,6 +10,7 @@ export class EmbeddingVisualizer {
         this.map = new maplibregl.Map({
             container: containerId,
             renderWorldCopies: false,
+            attributionControl: false,
             style: {
                 version: 8,
                 glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
