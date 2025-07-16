@@ -27,6 +27,10 @@
         flex-shrink: 0;
         display: inline-block;
     }
+    
+    .dark input[type="number"] {
+        color-scheme: dark; /* Styles the spinner arrows for dark theme */
+    }
 }
 
 

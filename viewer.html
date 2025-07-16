@@ -62,11 +62,16 @@
                 </div>
             </div>
 
-            <!-- Query Input (Footer, non-scrolling) -->
-            <div class="p-6 border-t border-slate-200 dark:border-slate-800 shrink-0">
-                <label for="query-input" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Find Your Own Text</label>
-                <textarea id="query-input" placeholder="Type or paste text to see where it lands on the map..." class="w-full h-24 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                ></textarea>
+            <div id="vertical-resizer" class="h-1.5 cursor-row-resize shrink-0 bg-slate-200 dark:bg-slate-800 hover:bg-sky-400 dark:hover:bg-sky-600 transition-colors"></div>
+
+            <!-- Query Input (Footer, non-scrolling, resizable) -->
+            <div id="query-container" class="shrink-0 p-6 flex flex-col" style="height: 10rem;">
+                <label for="query-input" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Find Your Own Text</label>                
+                <textarea 
+                    id="query-input" 
+                    placeholder="Type or paste text to see where it lands on the map..." 
+                    class="w-full flex-1 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
+                ></textarea>                
             </div>
         </aside>
 

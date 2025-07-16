@@ -22,6 +22,8 @@ export class UIController {
         this.versionNotificationArea = document.getElementById('version-notification-area');
         this.controlsPanel = document.querySelector('.controls-panel');
         this.visualizationPanel = document.querySelector('.visualization-panel');
+        this.verticalResizer = document.getElementById('vertical-resizer');
+        this.queryContainer = document.getElementById('query-container');
 
         this._attachEventListeners();
         
@@ -73,6 +75,39 @@ export class UIController {
                 }
             }
         });
+
+        if (this.verticalResizer && this.queryContainer && this.controlsPanel) {
+            this.verticalResizer.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+
+                const startY = e.clientY;
+                const startHeight = this.queryContainer.offsetHeight;
+                const panel = this.controlsPanel;
+
+                const doDrag = (moveEvent) => {
+                    moveEvent.preventDefault();
+                    let newHeight = startHeight - (moveEvent.clientY - startY);
+
+                    const minHeight = 80; // pixels
+                    const maxHeight = panel.offsetHeight * 0.7; // Allow up to 70% of side panel
+
+                    newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+                    this.queryContainer.style.height = `${newHeight}px`;
+                };
+
+                const stopDrag = () => {
+                    document.body.style.cursor = 'auto';
+                    document.body.style.userSelect = 'auto';
+                    document.removeEventListener('mousemove', doDrag);
+                    document.removeEventListener('mouseup', stopDrag);
+                };
+
+                document.body.style.cursor = 'row-resize';
+                document.body.style.userSelect = 'none';
+                document.addEventListener('mousemove', doDrag);
+                document.addEventListener('mouseup', stopDrag);
+            });
+        }
     }
 
     _attachMapEventListeners(map) {
