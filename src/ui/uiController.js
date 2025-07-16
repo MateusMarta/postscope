@@ -132,7 +132,7 @@ export class UIController {
 
         this.titleAreaEl.innerHTML = '';
         const titleEl = document.createElement('h2');
-        titleEl.className = 'text-xl font-semibold text-slate-800 flex items-center gap-2';
+        titleEl.className = 'text-xl font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2';
         
         const textSpan = document.createElement('span');
         textSpan.textContent = name;
@@ -140,8 +140,8 @@ export class UIController {
         
         const editButton = document.createElement('button');
         editButton.title = 'Edit name';
-        editButton.className = 'p-1.5 rounded-full text-slate-400 hover:bg-slate-200 hover:text-sky-600 transition-colors';
-        editButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>`;
+        editButton.className = 'title-edit-btn';
+        editButton.innerHTML = `<span class="material-symbols-outlined">edit</span>`;
 
         editButton.addEventListener('click', (e) => {
             e.preventDefault();
@@ -149,7 +149,7 @@ export class UIController {
             const input = document.createElement('input');
             input.type = 'text';
             input.value = currentName;
-            input.className = 'text-xl font-semibold text-slate-800 bg-white border border-sky-500 rounded-md px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-sky-500';
+            input.className = 'text-xl font-semibold text-slate-900 bg-white dark:text-slate-100 dark:bg-slate-900 border border-sky-500 rounded-lg px-2 py-1 w-full focus:outline-none focus:ring-2 focus:ring-sky-500';
 
             const save = () => {
                 const newName = input.value.trim();
@@ -266,10 +266,18 @@ export class UIController {
         const sortedNumericLabels = Object.keys(clusters).map(l => parseInt(l, 10)).sort((a, b) => { if (a === -1) return 1; if (b === -1) return -1; return a - b; });
         const uniqueClusterLabels = sortedNumericLabels.filter(l => l !== -1);
         
-        const getColorForCluster = (label) => { if (label == -1) return '#cccccc'; const clusterIndex = uniqueClusterLabels.indexOf(label); const hue = (clusterIndex * (360 / (uniqueClusterLabels.length + 1))) % 360; return `hsl(${hue}, 80%, 50%)`; };
+        const isDark = document.documentElement.classList.contains('dark');
+        const getColorForCluster = (label) => { 
+            if (label == -1) return isDark ? '#475569' : '#d1d5db'; // slate-600 / gray-300
+            const clusterIndex = uniqueClusterLabels.indexOf(label);
+            const hue = (clusterIndex * (360 / (uniqueClusterLabels.length + 1))) % 360;
+            const saturation = isDark ? 70 : 80;
+            const lightness = isDark ? 60 : 50;
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`; 
+        };
         
-        const eyeIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>`;
-        const eyeOffIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.44-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-4 .68l2.21 2.21C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L21.73 23 23 21.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zM12 17c.95 0 1.82-.22 2.6-.6L13 14.82c-.17.02-.34.03-.5.03-1.66 0-3-1.34-3-3 0-.17.01-.33.03-.5L8.4 9.4C7.78 10.18 7.5 11.05 7.5 12c0 2.48 2.02 4.5 4.5 4.5z"/></svg>`;
+        const eyeIcon = `<span class="material-symbols-outlined">visibility</span>`;
+        const eyeOffIcon = `<span class="material-symbols-outlined">visibility_off</span>`;
 
         for (const label of sortedNumericLabels) {
             const clusterItems = clusters[label];
@@ -384,13 +392,13 @@ export class UIController {
                 try {
                     const date = new Date(item.timestamp);
                     const formattedDate = date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-                    timestampHtml = `<span class="text-slate-500 text-xs ml-2">• ${formattedDate}</span>`;
+                    timestampHtml = `<span class="text-slate-500 dark:text-slate-400 text-xs ml-2">• ${formattedDate}</span>`;
                 } catch (e) {
                     console.warn("Could not parse timestamp:", item.timestamp, e);
                 }
             }
 
-            itemDiv.innerHTML = `<div><b>@${item.author}</b> <span class="text-slate-500 text-xs">(❤️ ${item.likes})</span>${timestampHtml}</div><div class="mt-1">${item.content}</div>`;
+            itemDiv.innerHTML = `<div><b>@${item.author}</b> <span class="text-slate-500 dark:text-slate-400 text-xs">(❤️ ${item.likes})</span>${timestampHtml}</div><div class="mt-1">${item.content}</div>`;
             detailView.appendChild(itemDiv);
         });
         

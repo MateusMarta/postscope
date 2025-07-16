@@ -1,23 +1,36 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Postscope - Visualization</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" type="text/css" href="./style.css">
 </head>
-<body class="font-sans antialiased text-slate-800 bg-slate-50">
+<body class="font-sans antialiased text-slate-900 dark:text-slate-100 bg-slate-100 dark:bg-slate-900">
     <div class="main-container flex h-screen w-screen overflow-hidden">
         
         <!-- Controls Panel (Left) -->
-        <aside class="controls-panel w-[400px] bg-white border-r border-slate-200 flex flex-col shadow-lg z-10">
+        <aside class="controls-panel w-[400px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-lg z-10">
             
             <!-- Header & Main Controls (Non-scrolling part) -->
             <div class="p-6 shrink-0 space-y-6">
-                <header>
-                    <h1 class="text-2xl font-bold text-sky-600 tracking-tight">
-                        <a href="index.html" class="hover:text-sky-700 transition-colors">Postscope</a>
+                <header class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-sky-600 dark:text-sky-500 tracking-tight">
+                        <a href="index.html" class="hover:text-sky-700 dark:hover:text-sky-400 transition-colors">Postscope</a>
                     </h1>
+                    <!-- Theme Selector -->
+                    <div class="theme-selector flex items-center p-1 bg-slate-200 dark:bg-slate-800 rounded-full">
+                        <button data-theme-value="light" title="Light Theme" data-state="inactive">
+                            <span class="material-symbols-outlined">light_mode</span>
+                        </button>
+                        <button data-theme-value="dark" title="Dark Theme" data-state="inactive">
+                            <span class="material-symbols-outlined">dark_mode</span>
+                        </button>
+                        <button data-theme-value="system" title="System Theme" data-state="inactive">
+                           <span class="material-symbols-outlined">desktop_windows</span>
+                        </button>
+                    </div>
                 </header>
                 
                 <!-- Version notification will appear here -->
@@ -26,39 +39,39 @@
                 <!-- Ensure this element is present for the UI controller -->
                 <div id="visualization-title-area" class="relative -mt-2"></div>
                 
-                <div id="source-info" class="text-sm text-slate-700"></div>
+                <div id="source-info" class="text-sm text-slate-700 dark:text-slate-300"></div>
                 
                 <div class="space-y-4">
                     <div class="control-group">
-                        <label for="min-cluster-size" class="block text-sm font-medium text-slate-700 mb-1">Minimum Cluster Size</label>
-                        <input id="min-cluster-size" type="number" min="1" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"/>
+                        <label for="min-cluster-size" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Minimum Cluster Size</label>
+                        <input id="min-cluster-size" type="number" min="1" class="w-full px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"/>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
-                        <button id="recluster-button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors">Update Clusters</button>
-                        <button id="toggle-labels-button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-white border border-slate-300 rounded-md font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transition-colors">Toggle Text</button>
+                        <button id="recluster-button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-sky-600 text-white font-semibold rounded-md shadow-sm hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 dark:focus:ring-offset-slate-900 transition-colors">Update Clusters</button>
+                        <button id="toggle-labels-button" class="w-full inline-flex items-center justify-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-md font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 focus:ring-sky-500 transition-colors">Toggle Text</button>
                     </div>
                 </div>
                  <div id="status-area"></div>
             </div>
 
             <!-- Scrollable Area for cluster list -->
-            <div class="flex-1 overflow-y-auto px-6 border-t border-slate-200">
+            <div class="flex-1 overflow-y-auto px-6 border-t border-slate-200 dark:border-slate-800">
                 <div id="cluster-manager" class="py-6">
-                    <label class="block text-sm font-semibold text-slate-800 mb-3">Clusters</label>
+                    <label class="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Clusters</label>
                     <div id="cluster-list-container" class="space-y-1"></div>
                 </div>
             </div>
 
             <!-- Query Input (Footer, non-scrolling) -->
-            <div class="p-6 border-t border-slate-200 shrink-0">
-                <label for="query-input" class="block text-sm font-medium text-slate-700 mb-1">Find Your Own Text</label>
-                <textarea id="query-input" placeholder="Type or paste text to see where it lands on the map..." class="w-full h-24 px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition"
+            <div class="p-6 border-t border-slate-200 dark:border-slate-800 shrink-0">
+                <label for="query-input" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Find Your Own Text</label>
+                <textarea id="query-input" placeholder="Type or paste text to see where it lands on the map..." class="w-full h-24 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 ></textarea>
             </div>
         </aside>
 
         <!-- Visualization Panel (Right) -->
-        <main class="visualization-panel flex-1 flex flex-col bg-slate-100">
+        <main class="visualization-panel flex-1 flex flex-col bg-slate-100 dark:bg-slate-800">
             <!-- Map takes up remaining space -->
             <div id="visualization-container" class="flex-1 relative min-h-0"></div>
             
@@ -68,6 +81,46 @@
 
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script>
+        // --- THEME SYSTEM ---
+        (() => {
+            const THEME_STORAGE_KEY = 'postscope-theme';
+
+            const applyTheme = (theme) => {
+                const root = document.documentElement;
+                const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                root.classList.toggle('dark', isDark);
+
+                document.querySelectorAll('[data-theme-value]').forEach(btn => {
+                    const isSelected = btn.dataset.themeValue === theme;
+                    btn.setAttribute('data-state', isSelected ? 'active' : 'inactive');
+                });
+            };
+
+            const setTheme = (theme) => {
+                if (!['light', 'dark', 'system'].includes(theme)) {
+                    theme = 'system';
+                }
+                localStorage.setItem(THEME_STORAGE_KEY, theme);
+                applyTheme(theme);
+                window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
+            };
+
+            const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+            setTheme(savedTheme);
+
+            document.querySelectorAll('[data-theme-value]').forEach(btn => {
+                btn.addEventListener('click', (e) => setTheme(e.currentTarget.dataset.themeValue));
+            });
+            
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                const currentTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+                if (currentTheme === 'system') {
+                    applyTheme('system');
+                }
+            });
+        })();
+    </script>
     <script type="module" src="./src/main.js"></script>
 </body>
 </html>

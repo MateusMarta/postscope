@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const message = isSearching 
                 ? '<p>No visualizations match your search.</p>'
                 : '<p>No history yet.</p><p>Use the bookmarklet or import a file to get started.</p>';
-            historyList.innerHTML = `<div class="text-center text-slate-500 py-8 bg-white border border-slate-200 rounded-lg shadow-sm">${message}</div>`;
+            historyList.innerHTML = `<div class="text-center text-slate-500 dark:text-slate-400 py-8 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">${message}</div>`;
             return;
         }
 
@@ -106,10 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const btn = document.createElement('button');
             btn.innerHTML = text;
             btn.disabled = isDisabled;
-            const baseClasses = "px-3 py-1.5 border border-slate-300 rounded-md text-sm font-medium transition-colors";
+            const baseClasses = "px-3 py-1.5 border rounded-md text-sm font-medium transition-colors";
             const activeClasses = "bg-sky-600 border-sky-600 text-white";
-            const defaultClasses = "bg-white text-slate-700 hover:bg-slate-50";
-            const disabledClasses = "bg-slate-100 text-slate-400 cursor-not-allowed";
+            const defaultClasses = "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700";
+            const disabledClasses = "bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed border-slate-200 dark:border-slate-700";
 
             btn.className = `${baseClasses} ${isDisabled ? disabledClasses : (isActive ? activeClasses : defaultClasses)}`;
             if (!isDisabled) {
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const createEllipsis = () => {
             const span = document.createElement('span');
-            span.className = 'px-1.5 py-1.5 text-slate-500 flex items-center justify-center';
+            span.className = 'px-1.5 py-1.5 text-slate-500 dark:text-slate-400 flex items-center justify-center';
             span.textContent = '...';
             return span;
         };
@@ -302,7 +302,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const input = document.createElement('input');
             input.type = 'text'; input.value = originalName;
-            input.className = 'w-full text-base font-semibold bg-white border border-sky-400 rounded-md px-1 py-0.5 -my-0.5 focus:outline-none focus:ring-1 focus:ring-sky-500';
+            input.className = 'w-full text-base font-semibold bg-white dark:bg-slate-700 border border-sky-400 rounded-md px-1 py-0.5 -my-0.5 focus:outline-none focus:ring-1 focus:ring-sky-500';
             input.addEventListener('click', e => e.stopPropagation());
             
             h3.replaceWith(input);
@@ -334,7 +334,9 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleBtn.addEventListener('click', () => {
         const isHidden = instructionsContent.style.display === 'none';
         instructionsContent.style.display = isHidden ? 'block' : 'none';
-        toggleBtn.innerHTML = isHidden ? 'Hide Instructions <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>' : 'Show Instructions <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>';
+        toggleBtn.innerHTML = isHidden 
+            ? 'Hide Instructions <span class="material-symbols-outlined text-base ml-1">expand_less</span>' 
+            : 'Show Instructions <span class="material-symbols-outlined text-base ml-1">expand_more</span>';
     });
 
     exportBtn.addEventListener('click', handleFullExport);

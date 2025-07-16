@@ -1,38 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <link rel="stylesheet" type="text/css" href="./style.css">
     <title>Postscope - Twitter/X Visualization Tool</title>
 </head>
-<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+<body class="bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100 font-sans antialiased">
     <div class="container mx-auto px-4 py-8 sm:py-12 max-w-4xl">
         
         <header class="text-center mb-10 sm:mb-12">
-            <h1 class="text-4xl sm:text-5xl font-bold text-sky-600 tracking-tight">Postscope</h1>
-            <p class="mt-3 text-lg text-slate-600 max-w-2xl mx-auto">See the hidden groups in any Twitter/X post's replies, profile, or timeline.</p>
-            <div class="mt-6 text-sm">
-                <a href="https://github.com/MateusMarta/postscope" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-slate-500 hover:text-sky-600 transition-colors font-medium">
+            <h1 class="text-4xl sm:text-5xl font-bold text-sky-600 dark:text-sky-500 tracking-tight">Postscope</h1>
+            <p class="mt-3 text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">See the hidden groups in any Twitter/X post's replies, profile, or timeline.</p>
+            <div class="mt-6 flex items-center justify-center gap-6">
+                <a href="https://github.com/MateusMarta/postscope" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-sky-600 dark:hover:text-sky-400 transition-colors font-medium">
                     <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.168 6.839 9.492.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.001 10.001 0 0022 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd"></path></svg>
-                    <span>GitHub • Contribute • Ask Questions • Report an Issue</span>
+                    <span>GitHub</span>
                 </a>
+                <!-- Theme Selector -->
+                <div class="theme-selector flex items-center p-1 bg-slate-200 dark:bg-slate-700 rounded-full">
+                    <button data-theme-value="light" title="Light Theme" data-state="inactive">
+                        <span class="material-symbols-outlined">light_mode</span>
+                    </button>
+                    <button data-theme-value="dark" title="Dark Theme" data-state="inactive">
+                        <span class="material-symbols-outlined">dark_mode</span>
+                    </button>
+                    <button data-theme-value="system" title="System Theme" data-state="inactive">
+                        <span class="material-symbols-outlined">desktop_windows</span>
+                    </button>
+                </div>
             </div>
         </header>
 
-        <button id="toggle-instructions-btn" class="mx-auto mb-8 flex items-center text-sm font-semibold text-sky-600 hover:text-sky-700" style="display: none;">
+        <button id="toggle-instructions-btn" class="mx-auto mb-8 flex items-center text-sm font-semibold text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300" style="display: none;">
             Show Instructions
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+            <span class="material-symbols-outlined text-base ml-1">expand_more</span>
         </button>
 
         <div id="instructions-content" class="mb-10 sm:mb-12" style="display: none;">
-            <div class="bg-white border border-slate-200 rounded-lg shadow-sm p-6 sm:p-8">
+            <div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm p-6 sm:p-8">
                 <div class="text-center">
-                    <h2 class="text-2xl font-bold text-slate-800">Get Started</h2>
-                    <p class="mt-2 text-slate-600">Drag this button to your browser's bookmarks bar.</p>
-                    <a id="bookmarklet" href="" class="inline-block mt-4 px-6 py-3 bg-sky-500 text-white font-bold rounded-lg shadow-md hover:bg-sky-600 transition-all cursor-move">Postscope it!</a>
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100">Get Started</h2>
+                    <p class="mt-2 text-slate-600 dark:text-slate-300">Drag this button to your browser's bookmarks bar.</p>
+                    <a id="bookmarklet" href="" class="inline-block mt-4 px-6 py-3 bg-sky-600 text-white font-bold rounded-lg shadow-md hover:bg-sky-700 transition-all cursor-move">Postscope it!</a>
                 </div>
-                <div class="mt-8 text-slate-700">
+                <div class="mt-8 text-slate-700 dark:text-slate-300">
                     <ol class="list-decimal list-inside space-y-3">
                         <li><strong>Drag the 'Postscope it!' button</strong> to your bookmarks bar.</li>
                         <li>Navigate to an X (Twitter) post, a user profile, your home timeline, or another supported page.</li>
@@ -46,24 +59,22 @@
 
         <div class="space-y-6">
             <!-- Global Controls for Import/Export -->
-            <div id="global-controls" class="flex flex-wrap items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+            <div id="global-controls" class="flex flex-wrap items-center justify-between gap-4 p-4 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm">
                  <div class="flex items-center gap-2">
-                    <label for="import-file-input" class="inline-flex items-center px-4 py-2 bg-white border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 cursor-pointer transition-colors">Import File</label>
-                    <button id="export-history-btn" class="inline-flex items-center px-4 py-2 bg-white border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">Export All</button>
+                    <label for="import-file-input" class="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600/50 cursor-pointer transition-colors">Import File</label>
+                    <button id="export-history-btn" class="inline-flex items-center px-4 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-600/50 transition-colors">Export All</button>
                     <input type="file" id="import-file-input" accept=".json" class="hidden" />
                 </div>
-                <p class="text-sm text-slate-500 hidden sm:block">You can also drag & drop a .json file anywhere on the page.</p>
-                <button id="clear-history-btn" class="inline-flex items-center px-4 py-2 bg-red-50 border border-red-200 rounded-md text-sm font-medium text-red-700 hover:bg-red-100 hover:border-red-300 transition-colors">Clear All</button>
+                <p class="text-sm text-slate-500 dark:text-slate-400 hidden sm:block">You can also drag & drop a .json file anywhere on the page.</p>
+                <button id="clear-history-btn" class="inline-flex items-center px-4 py-2 bg-red-100/50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-md text-sm font-medium text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 hover:border-red-300 dark:hover:border-red-500/50 transition-colors">Clear All</button>
             </div>
 
             <!-- Search Container -->
             <div id="search-container" class="relative" style="display: none;">
                 <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-                    <svg class="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
+                    <span class="material-symbols-outlined text-slate-400 dark:text-slate-500">search</span>
                 </div>
-                <input type="search" id="search-history-input" placeholder="Search visualizations by name, author, or content..." class="block w-full rounded-lg border border-slate-300 bg-white py-3 pl-12 pr-4 text-slate-900 shadow-sm transition placeholder:text-slate-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 text-base">
+                <input type="search" id="search-history-input" placeholder="Search visualizations by name, author, or content..." class="block w-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 py-3 pl-12 pr-4 text-slate-900 dark:text-slate-100 shadow-sm transition placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 text-base">
             </div>
             
             <!-- History Container -->
@@ -87,32 +98,29 @@
     </div>
 
     <!-- Drag & Drop Overlay -->
-    <div id="drag-overlay" class="hidden fixed inset-0 bg-sky-500/30 z-50 transition-opacity duration-300 opacity-0">
+    <div id="drag-overlay" class="hidden fixed inset-0 bg-sky-500/30 dark:bg-sky-900/30 z-50 transition-opacity duration-300 opacity-0">
         <div class="flex items-center justify-center h-full w-full p-4 pointer-events-none">
-            <div class="p-10 bg-white/95 rounded-2xl shadow-2xl border-4 border-dashed border-sky-500 text-center">
-                <p class="text-2xl font-bold text-sky-600">Drop your .json file here</p>
+            <div class="p-10 bg-white/95 dark:bg-slate-800/95 rounded-2xl shadow-2xl border-4 border-dashed border-sky-500 dark:border-sky-400 text-center">
+                <p class="text-2xl font-bold text-sky-600 dark:text-sky-400">Drop your .json file here</p>
             </div>
         </div>
     </div>
 
     <template id="history-item-template">
-        <li class="history-item flex bg-white rounded-lg shadow-sm border border-slate-200 hover:shadow-md hover:border-sky-300 transition-all duration-200 overflow-hidden">
-            <a href="#" class="history-item-main flex-grow p-4 sm:p-5 block text-slate-800 hover:bg-slate-50/50 transition-colors">
-                <h3 class="font-semibold text-slate-800"></h3>
-                <p class="text-sm text-slate-500 mt-1"></p>
+        <li class="history-item flex bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:shadow-md hover:border-sky-300 dark:hover:border-sky-500 transition-all duration-200 overflow-hidden">
+            <a href="#" class="history-item-main flex-grow p-4 sm:p-5 block text-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-700/50 transition-colors">
+                <h3 class="font-semibold text-slate-800 dark:text-slate-100"></h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1"></p>
             </a>
-            <div class="history-item-buttons flex items-center p-2 sm:p-3 border-l border-slate-200 space-x-1">
-                <button class="edit-btn p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-sky-500 transition-colors" title="Edit name">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-                        <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
-                    </svg>
+            <div class="history-item-buttons flex items-center p-2 sm:p-3 border-l border-slate-200 dark:border-slate-700 space-x-1">
+                <button class="history-item-btn edit-btn" title="Edit name">
+                    <span class="material-symbols-outlined">edit</span>
                 </button>
-                <button class="export-item-btn p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-sky-500 transition-colors" title="Export this visualization">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                <button class="history-item-btn export-item-btn" title="Export this visualization">
+                    <span class="material-symbols-outlined">upload</span>
                 </button>
-                <button class="delete-btn p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-red-500 transition-colors" title="Delete this visualization">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg>
+                <button class="history-item-btn delete-btn" title="Delete this visualization">
+                    <span class="material-symbols-outlined">delete</span>
                 </button>
             </div>
         </li>
@@ -383,6 +391,46 @@
             const minifiedScraperString = scraperFunction.toString().replace(/\s*\/\/.*/g, '').replace(/\s+/g, ' ');
             const codeString = `try{(${minifiedScraperString})('${appUrl}')}catch(e){console.error(e);alert('An error occurred: '+e.message)}`;
             document.getElementById('bookmarklet').href = `javascript:${encodeURIComponent(codeString)}`;
+        })();
+    </script>
+    <script>
+        // --- THEME SYSTEM ---
+        (() => {
+            const THEME_STORAGE_KEY = 'postscope-theme';
+
+            const applyTheme = (theme) => {
+                const root = document.documentElement;
+                const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                root.classList.toggle('dark', isDark);
+
+                document.querySelectorAll('[data-theme-value]').forEach(btn => {
+                    const isSelected = btn.dataset.themeValue === theme;
+                    btn.setAttribute('data-state', isSelected ? 'active' : 'inactive');
+                });
+            };
+
+            const setTheme = (theme) => {
+                if (!['light', 'dark', 'system'].includes(theme)) {
+                    theme = 'system';
+                }
+                localStorage.setItem(THEME_STORAGE_KEY, theme);
+                applyTheme(theme);
+                window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
+            };
+
+            const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+            setTheme(savedTheme);
+
+            document.querySelectorAll('[data-theme-value]').forEach(btn => {
+                btn.addEventListener('click', (e) => setTheme(e.currentTarget.dataset.themeValue));
+            });
+            
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                const currentTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+                if (currentTheme === 'system') {
+                    applyTheme('system');
+                }
+            });
         })();
     </script>
     <script type="module" src="/src/index-main.js"></script>
