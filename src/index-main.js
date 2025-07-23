@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextContainer = document.getElementById('pagination-next-container');
     const searchContainer = document.getElementById('search-container');
     const searchInput = document.getElementById('search-history-input');
-    const appUrl = 'https://postscope.pages.dev/viewer.html';
+    const appUrl = new URL('viewer.html', window.location.href).href;
 
     // --- RENDER FUNCTIONS ---
     

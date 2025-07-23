@@ -129,7 +129,7 @@
     <script>
         // --- BOOKMARKLET AND SCRAPER SCRIPT ---
         (function() {
-            const appUrl = 'https://postscope.pages.dev/viewer.html';
+            const appUrl = new URL('viewer.html', window.location.href).href;
             const scraperFunction = async (redirectUrl) => {
                 const SCRIPT_VERSION = 4;
                 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
