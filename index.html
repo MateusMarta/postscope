@@ -130,22 +130,20 @@
         // --- BOOKMARKLET AND SCRAPER SCRIPT ---
         (function() {
             const appUrl = new URL('viewer.html', window.location.href).href;
-            const scraperFunction = async (redirectUrl) => {
-                const SCRIPT_VERSION = 4;
+            const scraperFunction = async (targetUrl) => {
+                const SCRIPT_VERSION = 5;
                 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
                 if (window.location.hostname === 'x.com' && window.location.pathname === '/') {
                     console.log('Postscope: on x.com, waiting for redirect to /home...');
                     const startTime = Date.now();
-                    while (window.location.pathname === '/' && (Date.now() - startTime) < 5000) { // 5 second timeout
+                    while (window.location.pathname === '/' && (Date.now() - startTime) < 5000) {
                         await wait(100);
                     }
-
                     if (window.location.pathname === '/') {
                         alert('Postscope: Timed out waiting for x.com to redirect. Please try again once you are on your home timeline.');
                         return;
                     }
-                    console.log('Postscope: Redirected to', window.location.pathname);
                 }
                 
                 const waitForElement = async (selector, context = document, timeout = 10000) => {
@@ -205,6 +203,8 @@
                 }
                 let userCancelled = false;
                 let isPausedForRetry = false;
+                let preOpenedWindow = null; 
+                
                 const updateOverlay = (state, retryCallback) => {
                     const statusEl = document.getElementById('postscope-status');
                     const overlayContentDiv = statusEl?.parentElement;
@@ -221,7 +221,7 @@
                         retryBtn.style.cssText = 'padding: 10px 20px; font-size: 1rem; color: #333; background: #cceeff; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;';
                         retryBtn.onclick = retryCallback;
                         overlayContentDiv.insertBefore(retryBtn, document.getElementById('postscope-stop-btn'));
-                    } else { // 'collecting'
+                    } else {
                         statusEl.innerHTML = 'Postscope is collecting posts...';
                     }
                 };
@@ -229,11 +229,16 @@
                     const overlay = document.createElement('div');
                     overlay.id = 'postscope-overlay';
                     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background-color:rgba(0,0,0,0.7);z-index:99999;display:flex;justify-content:center;align-items:center;color:white;font-family:sans-serif;';
-                    overlay.innerHTML = `<div style="text-align: center; padding: 20px 40px; background: #222; border-radius: 10px;"><h2 id="postscope-status">Postscope is collecting posts...</h2><p>Please keep this tab open and in view.</p><p id="postscope-count" style="font-size: 1.2em; font-weight: bold; margin: 15px 0;">Found 0 posts</p><button id="postscope-stop-btn" style="padding: 10px 20px; font-size: 1rem; color: #333; background: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">Stop & Visualize</button></div>`;
+                    // Added IDs for dynamic updating
+                    // NOTE: Initial button style is WHITE (#fff) with DARK TEXT (#333) as requested
+                    overlay.innerHTML = `<div style="text-align: center; padding: 20px 40px; background: #222; border-radius: 10px;"><h2 id="postscope-status">Postscope is collecting posts...</h2><p id="postscope-hint">Please keep this tab open and in view.</p><p id="postscope-count" style="font-size: 1.2em; font-weight: bold; margin: 15px 0;">Found 0 posts</p><button id="postscope-stop-btn" style="padding: 10px 20px; font-size: 1rem; color: #333; background: #fff; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">Stop & Visualize</button></div>`;
                     document.body.appendChild(overlay);
+                    
                     document.getElementById('postscope-stop-btn').onclick = () => {
                         document.getElementById('postscope-status').textContent = 'Finalizing...';
                         userCancelled = true;
+                        // Open window IMMEDIATELY on manual click
+                        preOpenedWindow = window.open(targetUrl, '_blank');
                     };
                     return overlay;
                 };
@@ -293,8 +298,8 @@
                 let previousHeight = -1;
                 let previousTweetCount = -1;
                 let stuckCount = 0;
-                const foundTweets = new Set();
-                let scrapedData = 'author,text,likes,timestamp,url\n';
+                
+                const foundTweets = new Map();
                 
                 console.log('Postscope: Scrolling to top to begin collection.');
                 window.scrollTo(0, 0);
@@ -311,10 +316,7 @@
                         if (!article) continue;
                         
                         const adMarker = Array.from(article.querySelectorAll('span')).find(span => span.innerText.trim() === 'Ad');
-                        if (adMarker) {
-                            console.log('Postscope: Skipping an ad post.');
-                            continue;
-                        }
+                        if (adMarker) { continue; }
 
                         const tweetTextElement = article.querySelector('[data-testid="tweetText"]');
                         const authorHandle = article.querySelector('div[data-testid="User-Name"] a[href^="/"]')?.href.split('/').pop();
@@ -323,28 +325,36 @@
                         const likes = likeMatch ? parseInt(likeMatch[1].replace(/,/g, ''), 10) : 0;
                         const timeElement = article.querySelector('time[datetime]');
                         const postTimestamp = timeElement ? timeElement.getAttribute('datetime') : '';
-                        const postLinkElement = timeElement ? timeElement.closest('a') : null;
-                        const postUrl = postLinkElement ? postLinkElement.href : '';
+                        
+                        let postUrl = '';
+                        if (timeElement) {
+                            const postLinkElement = timeElement.closest('a');
+                            if (postLinkElement) postUrl = postLinkElement.href;
+                        }
+                        if (!postUrl) {
+                            const statusLinks = Array.from(article.querySelectorAll('a[href*="/status/"]'));
+                            const matchingLink = statusLinks.find(l => l.href.includes(`/${authorHandle}/status/`));
+                            if(matchingLink) postUrl = matchingLink.href;
+                        }
+
                         if (!tweetTextElement || !authorHandle) continue;
                         if (pageInfo.type === 'post' && authorHandle === originalPosterHandle) continue;
                         if (filterByProfileOwner && authorHandle !== pageInfo.handle) continue;
+                        
                         const text = tweetTextElement.innerText;
-                        const uniqueKey = postUrl || (authorHandle + text + postTimestamp);
+                        const uniqueKey = postUrl || (authorHandle + text.substring(0,50) + postTimestamp);
+                        
                         if (!foundTweets.has(uniqueKey)) {
-                            foundTweets.add(uniqueKey);
+                            foundTweets.set(uniqueKey, { author: authorHandle, text: text, likes: likes, timestamp: postTimestamp, url: postUrl });
                             updateStatus(foundTweets.size);
-                            const sanitizedText = text.replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
-                            scrapedData += `"${authorHandle}","${sanitizedText}","${likes}","${postTimestamp}","${postUrl}"\n`;
                         }
                     }
                     
                     const retryButtonOnPage = Array.from(document.querySelectorAll('[role="button"]')).find(el => el.innerText.trim() === 'Retry');
 
                     if (retryButtonOnPage) {
-                        console.log('Postscope: "Retry" button detected. Pausing for user input.');
                         isPausedForRetry = true;
                         updateOverlay('retry', () => {
-                            console.log('Postscope: User chose to retry. Resuming...');
                             if (retryButtonOnPage) retryButtonOnPage.click();
                             updateOverlay('collecting');
                             stuckCount = 0;
@@ -359,8 +369,6 @@
                     const currentTweetCount = foundTweets.size;
                     const isLoading = visibleSpinners.size > 0 && window.scrollY > 100;
 
-                    console.log(`Postscope Debug: stuck=${stuckCount}, scrollY=${Math.round(window.scrollY)}, posts=${currentTweetCount}, loading=${isLoading}`);
-
                     if (isLoading) {
                         stuckCount = 0;
                     } else if (previousHeight !== -1 && currentHeight <= previousHeight && currentTweetCount === previousTweetCount) {
@@ -370,7 +378,6 @@
                     }
                     if (stuckCount >= 25) {
                         userCancelled = true;
-                        document.getElementById('postscope-status').textContent = 'Reached end of content. Finalizing...';
                     }
                     previousHeight = currentHeight;
                     previousTweetCount = currentTweetCount;
@@ -380,11 +387,73 @@
                 mutationObserver.disconnect();
 
                 if (foundTweets.size > 0) {
-                    const encodedData = btoa(unescape(encodeURIComponent(scrapedData)));
-                    const encodedContext = btoa(unescape(encodeURIComponent(JSON.stringify(context))));
-                    window.location.href = `${redirectUrl}#data=${encodedData}&context=${encodedContext}`;
+                    const status = document.getElementById('postscope-status');
+                    const hint = document.getElementById('postscope-hint');
+                    const stopBtn = document.getElementById('postscope-stop-btn');
+                    
+                    // UI UPDATES FOR SUCCESS STATE
+                    hint.style.display = 'none'; // Hide the "keep open" text
+                    status.textContent = 'Collection done.';
+                    
+                    let csvContent = 'author,text,likes,timestamp,url\n';
+                    foundTweets.forEach(t => {
+                         const sanitizedText = t.text.replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
+                         csvContent += `"${t.author}","${sanitizedText}","${t.likes}","${t.timestamp}","${t.url}"\n`;
+                    });
+
+                    const sendDataToWindow = (targetWin) => {
+                        const messageHandler = (event) => {
+                            if (event.data && event.data.type === 'postscope-ready') {
+                                status.textContent = 'Transferring data...';
+                                targetWin.postMessage({
+                                    type: 'postscope-data',
+                                    csvData: csvContent,
+                                    context: context
+                                }, '*'); 
+                                
+                                window.removeEventListener('message', messageHandler);
+                                status.textContent = 'Done!';
+                                setTimeout(() => document.getElementById('postscope-overlay').remove(), 2000);
+                            }
+                        };
+                        window.addEventListener('message', messageHandler);
+                        
+                        setTimeout(() => {
+                             targetWin.postMessage({
+                                    type: 'postscope-data',
+                                    csvData: csvContent,
+                                    context: context
+                                }, '*');
+                             status.textContent = 'Data sent.';
+                             setTimeout(() => document.getElementById('postscope-overlay').remove(), 2000);
+                        }, 2500);
+                    };
+
+                    // Logic: If user manually clicked, use that window. Else ask for click.
+                    if (preOpenedWindow && !preOpenedWindow.closed) {
+                         status.textContent = 'Opening Postscope...';
+                         sendDataToWindow(preOpenedWindow);
+                    } else {
+                        // Change button to BLUE (#0ea5e9) and WHITE text as requested for the automatic stop phase
+                        stopBtn.textContent = 'Open Visualization';
+                        stopBtn.style.backgroundColor = '#0ea5e9'; 
+                        stopBtn.style.color = '#ffffff';
+
+                        stopBtn.onclick = () => {
+                            status.textContent = 'Opening Postscope...';
+                            const viewerWindow = window.open(targetUrl, '_blank');
+                            
+                            if (!viewerWindow) {
+                                alert('Pop-up blocked! Please allow pop-ups for Postscope.');
+                                status.textContent = 'Pop-up blocked.';
+                                return;
+                            }
+                            sendDataToWindow(viewerWindow);
+                        };
+                    }
+
                 } else {
-                    overlay.remove();
+                    document.getElementById('postscope-overlay').remove();
                     alert('No posts were collected. Please try again on a page with tweets.');
                 }
             };

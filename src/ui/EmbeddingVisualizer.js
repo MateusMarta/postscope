@@ -243,7 +243,8 @@ export class EmbeddingVisualizer {
         this.map.getSource('cluster-names').setData({ type: 'FeatureCollection', features: nameFeatures });
     }
 
-    render(pointsData, twoDimCoords, labels, customizations, labelToCustIdMap, areLabelsVisible) {
+    // FIX: Added shouldFitBounds argument to control zooming behavior (Bug 2)
+    render(pointsData, twoDimCoords, labels, customizations, labelToCustIdMap, areLabelsVisible, shouldFitBounds = false) {
         if (!this.map.isStyleLoaded() || twoDimCoords.length === 0) {
             this.map.once('load', () => this.render(...arguments));
             return;
@@ -287,12 +288,15 @@ export class EmbeddingVisualizer {
             if (source) source.setData({ type: 'FeatureCollection', features: [] });
         }
 
-        const bounds = new maplibregl.LngLatBounds();
-        twoDimCoords.forEach(coord => bounds.extend(coord));
-        
-        this.map.resize();
-        if (!bounds.isEmpty()) {
-            this.map.fitBounds(bounds, { padding: 50, maxZoom: 8, duration: 0 });
+        // FIX: Only reset camera if explicitly requested (e.g., initial load or full recluster)
+        if (shouldFitBounds) {
+            const bounds = new maplibregl.LngLatBounds();
+            twoDimCoords.forEach(coord => bounds.extend(coord));
+            
+            this.map.resize();
+            if (!bounds.isEmpty()) {
+                this.map.fitBounds(bounds, { padding: 50, maxZoom: 8, duration: 1000 }); // Added duration
+            }
         }
     }
 
@@ -310,6 +314,9 @@ export class EmbeddingVisualizer {
         source.setData({ type: "FeatureCollection", features: [{
             type: "Feature", geometry: { type: "Point", coordinates: [coords[0], coords[1]] }, properties: { text }
         }]});
+        
+        // Pan to query point
+        this.map.flyTo({ center: [coords[0], coords[1]], zoom: 5 });
     }
 
     highlightPoint(coords) {
@@ -333,6 +340,8 @@ export class EmbeddingVisualizer {
                 properties: {}
             }]
         });
+        
+        this.map.flyTo({ center: coords, zoom: Math.max(this.map.getZoom(), 4) });
     }
 
     togglePointLabels() {

@@ -1,4 +1,4 @@
-import { UMAP } from 'https://esm.sh/umap-js@1.4.0';
+import { UMAP } from 'umap-js';
 import { SemanticEmbedding } from '../services/SemanticEmbedding.js';
 import { clusterWithHDBSCAN } from '../services/Clustering.js';
 
@@ -15,11 +15,6 @@ export class AnalysisPipeline {
 
     /**
      * Re-initializes UMAP models with existing data.
-     * This is used when loading a saved state to enable the .transform() method for new queries
-     * without re-running the entire expensive fitting process.
-     * @param {number[][]} embeddings The original high-dimensional embeddings.
-     * @param {number[][]} data10D The pre-computed 10D projections of the embeddings.
-     * @param {number[][]} data2D The pre-computed 2D projections of the embeddings.
      */
     rehydrate(embeddings, data10D, data2D) {
         if (!embeddings || embeddings.length === 0) {
@@ -62,11 +57,10 @@ export class AnalysisPipeline {
 
         const nNeighbors = Math.min(15, allItems.length - 1);
         if (nNeighbors < 2) {
-            throw new Error(`Not enough data points to create a map.`);
+            throw new Error(`Not enough data points to create a map (Found ${allItems.length}).`);
         }
         
         // Create a single, shared random number generator for the entire pipeline.
-        // This ensures the results are perfectly reproducible.
         const random = mulberry32(RANDOM_SEED);
 
         progressCallback('<div class="spinner"></div><p>Mapping dimensions (1/2)...</p>');
@@ -74,7 +68,7 @@ export class AnalysisPipeline {
         const nEpochs10D = this.umap10D.initializeFit(embeddings);
         for (let i = 0; i < nEpochs10D; i++) {
             this.umap10D.step();
-            if (i % 10 === 0) {
+            if (i % 20 === 0) { // Reduced update frequency for performance
                 const progress = Math.round((i / nEpochs10D) * 100);
                 progressCallback(`<div class="spinner"></div><p>Mapping dimensions (1/2): ${progress}%</p>`);
                 await new Promise(resolve => setTimeout(resolve, 0));
@@ -87,7 +81,7 @@ export class AnalysisPipeline {
         const nEpochs2D = this.umap2D.initializeFit(embeddings);
         for (let i = 0; i < nEpochs2D; i++) {
             this.umap2D.step();
-             if (i % 10 === 0) {
+             if (i % 20 === 0) {
                 const progress = Math.round((i / nEpochs2D) * 100);
                 progressCallback(`<div class="spinner"></div><p>Mapping dimensions (2/2): ${progress}%</p>`);
                 await new Promise(resolve => setTimeout(resolve, 0));
@@ -96,14 +90,18 @@ export class AnalysisPipeline {
         const data2D = this.umap2D.getEmbedding();
 
         progressCallback('<div class="spinner"></div><p>Grouping posts...</p>');
-        const labels = clusterWithHDBSCAN(data10D, 5);
+        
+        // --- FIX: Added await here ---
+        const labels = await clusterWithHDBSCAN(data10D, 5);
 
         return { embeddings, data10D, data2D, labels };
     }
 
     async runClustering(data10D, minClusterSize) {
         if (!data10D) throw new Error("10D data not available for clustering.");
-        const labels = clusterWithHDBSCAN(data10D, minClusterSize);
+        
+        // --- FIX: Added await here ---
+        const labels = await clusterWithHDBSCAN(data10D, minClusterSize);
         return { labels };
     }
 

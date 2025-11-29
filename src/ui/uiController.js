@@ -62,13 +62,10 @@ export class UIController {
             }
 
             if (isAlreadyActive) {
-                // If the clicked item was the one that was active, we just deselect it
-                // and clear the highlight.
                 if (this.callbacks.onPostSelect) {
                     this.callbacks.onPostSelect(null);
                 }
             } else {
-                // If it was a new item, we select it and highlight it on the map.
                 responseItem.classList.add('active');
                 if (this.callbacks.onPostSelect) {
                     this.callbacks.onPostSelect(index);
@@ -267,14 +264,15 @@ export class UIController {
         this.sourceInfoEl.style.display = 'block';
     }
 
-    render(appState, visualizer) {
+    // Pass through shouldFitBounds (Fix Bug 2)
+    render(appState, visualizer, shouldFitBounds = false) {
         const items = appState.getAllItems();
         const coords = appState.getData2D();
         const labels = appState.getLabels();
         const customizations = appState.getCustomizationsForCurrentSize();
         const labelToCustIdMap = appState.getLabelToCustIdMap();
         
-        visualizer.render(items, coords, labels, customizations, labelToCustIdMap, appState.getArePointLabelsVisible());
+        visualizer.render(items, coords, labels, customizations, labelToCustIdMap, appState.getArePointLabelsVisible(), shouldFitBounds);
         this._renderClusterUI(appState);
     }
 

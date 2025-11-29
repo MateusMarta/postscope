@@ -40,56 +40,53 @@ document.addEventListener('DOMContentLoaded', () => {
         paginatedItems.forEach(item => {
             const templateClone = historyItemTemplate.content.cloneNode(true);
             const li = templateClone.querySelector('.history-item');
+            
             li.dataset.id = item.id;
-            li.dataset.urlFragment = item.urlFragment;
             
             const title = item.name || 'Untitled Visualization';
             const date = new Date(item.timestamp).toLocaleString();
             
             const mainLink = li.querySelector('.history-item-main');
-            mainLink.href = item.hasSavedState ? `${appUrl}${item.urlFragment}` : '#';
+            // Link is always valid now. If savedState missing, main.js will resume analysis.
+            mainLink.href = `${appUrl}#${item.id}`;
+            
+            const h3 = li.querySelector('h3');
+            
             if (!item.hasSavedState) {
-                mainLink.title = "This visualization was not fully saved. Re-run from the source page.";
-                mainLink.style.cursor = 'not-allowed';
-                mainLink.addEventListener('click', e => e.preventDefault());
+                // Visual cue that it's incomplete
+                const badge = document.createElement('span');
+                badge.className = "inline-block bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded ml-2 border border-amber-200 align-middle font-normal";
+                badge.textContent = "Processing Incomplete";
+                h3.appendChild(badge);
+                mainLink.title = "Analysis incomplete. Click to resume.";
             }
 
-            li.querySelector('h3').textContent = title;
-            li.querySelector('p').textContent = `${item.postCount} posts • Visualized on ${date}`;
+            h3.prepend(document.createTextNode(title));
+            li.querySelector('p').textContent = `${item.postCount} posts • Created ${date}`;
             historyList.appendChild(li);
         });
     }
 
     /**
      * Creates an array of page numbers and ellipses to display.
-     * @param {number} currentPage The current active page.
-     * @param {number} totalPages The total number of pages.
-     * @param {number} maxVisible The maximum number of page items (numbers/ellipses) to show.
-     * @returns {Array<number|string>} An array like [1, '...', 4, 5, 6, '...', 10].
      */
     function getPaginationItems(currentPage, totalPages, maxVisible) {
         if (totalPages <= maxVisible) {
             return Array.from({ length: totalPages }, (_, i) => i + 1);
         }
-
-        // Ensure maxVisible is odd to have a symmetric window around the current page
         if (maxVisible % 2 === 0) maxVisible--;
         
-        const sideWidth = Math.floor((maxVisible - 3) / 2); // -3 for current page and two ellipses
+        const sideWidth = Math.floor((maxVisible - 3) / 2);
         const windowStart = currentPage - sideWidth;
-        const windowEnd = currentPage + sideWidth;
 
         if (currentPage - 1 <= sideWidth + 1) {
-            // Case: Near the beginning
             const front = Array.from({ length: maxVisible - 2 }, (_, i) => i + 1);
             return [...front, '...', totalPages];
         }
         if (totalPages - currentPage <= sideWidth + 1) {
-            // Case: Near the end
             const back = Array.from({ length: maxVisible - 2 }, (_, i) => totalPages - (maxVisible - 3) + i);
             return [1, '...', ...back];
         }
-        // Case: In the middle
         const middle = Array.from({ length: maxVisible - 4 }, (_, i) => windowStart + i);
         return [1, '...', ...middle, '...', totalPages];
     }
@@ -125,13 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return span;
         };
 
-        // Add Prev/Next buttons to their fixed containers
         prevContainer.appendChild(createButton('« Prev', currentPage - 1, currentPage === 1));
         nextContainer.appendChild(createButton('Next »', currentPage + 1, currentPage === totalPages));
 
-        // Dynamically calculate how many buttons can fit
         const containerWidth = pagesContainer.clientWidth;
-        const avgButtonWidth = 48; // A reasonable estimate for a button like "99" + gap
+        const avgButtonWidth = 48;
         let capacity = Math.max(3, Math.floor(containerWidth / avgButtonWidth));
         
         const itemsToRender = getPaginationItems(currentPage, totalPages, capacity);
@@ -188,29 +183,24 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshDisplay();
     }
     
-    async function updateHistoryItemName(urlFragment, newName) {
-        if (!urlFragment || !newName) return;
-        await vizStore.updateName(urlFragment, newName);
+    async function updateHistoryItemName(id, newName) {
+        if (!id || !newName) return;
+        await vizStore.updateName(id, newName);
         
-        const itemInList = fullHistoryList.find(item => item.urlFragment === urlFragment);
+        const itemInList = fullHistoryList.find(item => item.id == id);
         if (itemInList) itemInList.name = newName;
         
-        const item = await vizStore.getVisualization(urlFragment);
-        if (item && item.savedState) {
-            item.savedState.visualizationName = newName;
-            await vizStore.saveVisualization(item);
-        }
         refreshDisplay();
     }
     
-    async function deleteHistoryItem(urlFragment) {
-        await vizStore.deleteVisualization(urlFragment);
+    async function deleteHistoryItem(id) {
+        await vizStore.deleteVisualization(id);
         fullHistoryList = await vizStore.getHistoryList();
         refreshDisplay();
     }
 
-    async function handleItemExport(urlFragment) {
-        const itemToExport = await vizStore.getVisualization(urlFragment);
+    async function handleItemExport(id) {
+        const itemToExport = await vizStore.getVisualization(id);
         if (!itemToExport) { alert('Could not find visualization to export.'); return; }
         
         let slug = itemToExport.name || `item-${itemToExport.id}`;
@@ -290,32 +280,37 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
 
         const itemEl = button.closest('.history-item');
-        const urlFragment = itemEl.dataset.urlFragment;
+        const id = itemEl.dataset.id;
         
         if (button.classList.contains('delete-btn')) {
-            if(confirm('Are you sure you want to delete this visualization?')) { deleteHistoryItem(urlFragment); }
+            if(confirm('Are you sure you want to delete this visualization?')) { deleteHistoryItem(id); }
         } else if (button.classList.contains('export-item-btn')) {
-            handleItemExport(urlFragment);
+            handleItemExport(id);
         } else if (button.classList.contains('edit-btn')) {
             const h3 = itemEl.querySelector('h3');
-            const originalName = h3.textContent;
+            const originalName = h3.childNodes[0].textContent; // Get text node only, ignore badges
             
             const input = document.createElement('input');
             input.type = 'text'; input.value = originalName;
             input.className = 'w-full text-base font-semibold bg-white dark:bg-slate-700 border border-sky-400 rounded-md px-1 py-0.5 -my-0.5 focus:outline-none focus:ring-1 focus:ring-sky-500';
             input.addEventListener('click', e => e.stopPropagation());
             
-            h3.replaceWith(input);
+            // Handle existing badges during edit
+            const badges = Array.from(h3.children);
+            h3.innerHTML = '';
+            h3.appendChild(input);
             input.focus(); input.select();
             
             const save = () => {
                 const newName = input.value.trim();
-                input.replaceWith(h3);
+                h3.innerHTML = ''; // Clear input
                 if (newName && newName !== originalName) {
-                    h3.textContent = newName;
-                    updateHistoryItemName(urlFragment, newName);
+                    h3.appendChild(document.createTextNode(newName));
+                    badges.forEach(b => h3.appendChild(b));
+                    updateHistoryItemName(id, newName);
                 } else {
-                    h3.textContent = originalName;
+                    h3.appendChild(document.createTextNode(originalName));
+                    badges.forEach(b => h3.appendChild(b));
                 }
             };
 

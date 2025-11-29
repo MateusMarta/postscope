@@ -4,7 +4,7 @@ import { UIController } from './ui/uiController.js';
 import { AnalysisPipeline } from './analysis/analysisPipeline.js';
 import { EmbeddingVisualizer } from './ui/EmbeddingVisualizer.js';
 
-const CURRENT_BOOKMARKLET_VERSION = 4;
+const CURRENT_BOOKMARKLET_VERSION = 5;
 
 document.addEventListener('DOMContentLoaded', async () => {
     const appState = new AppState();
@@ -12,11 +12,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const visualizer = new EmbeddingVisualizer({ containerId: 'visualization-container' });
     const analysisPipeline = new AnalysisPipeline();
 
-    const originalUrlFragment = window.location.hash;
+    // Store the ID of the current session to update state later
+    let currentSessionId = null;
 
     const saveCurrentState = () => {
-        if (!originalUrlFragment) return;
-        historyManager.saveStateForSession(originalUrlFragment, appState.getSerializableState());
+        if (!currentSessionId) return;
+        historyManager.updateState(currentSessionId, appState.getSerializableState());
         console.log("State save triggered.");
     };
 
@@ -34,14 +35,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ui.showLoading('Loading cached clusters...');
                 await new Promise(resolve => setTimeout(resolve, 10));
                 appState.switchToExistingClustering(minClusterSize);
-                ui.render(appState, visualizer);
+                // Pass 'true' to fitBounds ONLY on explicit recluster/reset
+                ui.render(appState, visualizer, true); 
                 ui.hideLoading(`Restored ${appState.getUniqueClusterCount()} clusters.`);
             } else {
                 ui.showLoading('Updating clusters...');
                 await new Promise(resolve => setTimeout(resolve, 10));
                 const results = await analysisPipeline.runClustering(appState.getData10D(), minClusterSize);
                 appState.updateClusteringResults(results.labels, minClusterSize);
-                ui.render(appState, visualizer);
+                ui.render(appState, visualizer, true);
                 ui.hideLoading(`Found ${appState.getUniqueClusterCount()} new clusters.`);
             }
             saveCurrentState();
@@ -57,12 +59,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         onNameChange: (label, newName) => {
             appState.setClusterName(label, newName);
-            visualizer.render(appState.getAllItems(), appState.getData2D(), appState.getLabels(), appState.getCustomizationsForCurrentSize(), appState.getLabelToCustIdMap(), appState.getArePointLabelsVisible());
+            // Do NOT fit bounds on name change
+            ui.render(appState, visualizer, false); 
             saveCurrentState();
         },
         onVisibilityChange: (label, isVisible) => {
             appState.setClusterVisibility(label, isVisible);
-            ui.render(appState, visualizer);
+            ui.render(appState, visualizer, false);
             saveCurrentState();
         },
         onToggleLabels: () => {
@@ -84,83 +87,107 @@ document.addEventListener('DOMContentLoaded', async () => {
         getMapInstance: () => visualizer.getMapInstance()
     });
 
-    const { data, context, savedState, historyEntry } = await historyManager.getSession(originalUrlFragment);
-
-    if (savedState && savedState.data2D && savedState.data2D.length > 0) {
-        // --- PATH A: Load from fully saved state ---
-        ui.showLoading('Loading saved visualization...');
-        
-        appState.setFullState(savedState);
-        const visName = savedState.visualizationName || (historyEntry ? historyEntry.name : 'Untitled Visualization');
-        appState.setVisualizationName(visName);
-        ui.setVisualizationTitle(visName);
-        
-        ui.showLoading('Initializing models for queries...');
-        await analysisPipeline.semanticEmbedding.init();
-        await analysisPipeline.semanticEmbedding.initLocalEmbedder();
-        analysisPipeline.rehydrate(appState.getEmbeddings(), appState.getData10D(), appState.getData2D());
-
-        ui.setMinClusterSize(appState.getMinClusterSize());
-        ui.setSourceInfo(context, appState.getAllItems().length);
-        
-        history.replaceState(null, '', ' ');
-        await new Promise(resolve => setTimeout(resolve, 50)); 
-        
-        ui.render(appState, visualizer);
-        ui.updateToggleLabelsButton(appState.getArePointLabelsVisible());
-        ui.hideLoading(`Loaded ${appState.getUniqueClusterCount()} clusters from session.`);
-        ui.enableControls();
-
-    } else {
-        // --- PATH B: Run new analysis ---
-        if (!context || !data || data.length === 0) {
-            const isHomePage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
-            if (!isHomePage) {
-               ui.showError("No data found. Please use the Postscope bookmarklet on a Twitter/X page.");
-            }
-            return;
-        }
-
-        if (!context.version || context.version < CURRENT_BOOKMARKLET_VERSION) {
-            ui.showVersionWarning();
-        }
-        
-        const visName = historyEntry ? historyEntry.name : 'Untitled Visualization';
-        appState.setVisualizationName(visName);
-        ui.setVisualizationTitle(visName);
-        
+    // Helper to run the analysis pipeline and save results
+    const runAnalysisPipeline = async (data, context) => {
         ui.setSourceInfo(context, data.length);
-        ui.showLoading('Starting analysis...');
         ui.disableControls();
 
         try {
-            const newHistoryEntry = await historyManager.saveNewHistoryEntry(context, data.length, originalUrlFragment);
-            if(newHistoryEntry) {
-                appState.setVisualizationName(newHistoryEntry.name);
-                ui.setVisualizationTitle(newHistoryEntry.name);
-            }
-
             const results = await analysisPipeline.runFullAnalysis(data, (progressMessage) => ui.showLoading(progressMessage));
 
             appState.setInitialData(data, results.embeddings, results.data10D, results.data2D);
-            
             const initialMinSize = 5;
             ui.setMinClusterSize(initialMinSize);
-
             appState.updateClusteringResults(results.labels, initialMinSize);
             
+            // Save complete state to the existing DB entry
             saveCurrentState();
-            history.replaceState(null, '', ' ');
 
-            ui.render(appState, visualizer);
+            ui.render(appState, visualizer, true);
             ui.updateToggleLabelsButton(appState.getArePointLabelsVisible());
             ui.hideLoading(`Analysis Complete. Found ${appState.getUniqueClusterCount()} clusters.`);
         } catch (error) {
-            console.error("An error occurred during the analysis pipeline:", error);
-            ui.showError(error.message);
+            console.error("Analysis Error:", error);
+            ui.showError(`Analysis failed: ${error.message}`);
         } finally {
             ui.enableControls();
         }
+    };
+
+    // Check URL Hash for Session ID
+    const urlHash = window.location.hash;
+    const session = await historyManager.getSession(urlHash);
+
+    if (session.historyEntry) {
+        // --- PATH A: Load from DB (Resume or View) ---
+        currentSessionId = session.historyEntry.id;
+
+        if (session.savedState) {
+            // Case A1: Fully saved state exists. Restore it.
+            ui.showLoading('Loading saved visualization...');
+            appState.setFullState(session.savedState);
+            const visName = session.savedState.visualizationName || session.historyEntry.name;
+            appState.setVisualizationName(visName);
+            ui.setVisualizationTitle(visName);
+            
+            ui.showLoading('Initializing models for queries...');
+            await analysisPipeline.semanticEmbedding.init();
+            await analysisPipeline.semanticEmbedding.initLocalEmbedder();
+            analysisPipeline.rehydrate(appState.getEmbeddings(), appState.getData10D(), appState.getData2D());
+
+            ui.setMinClusterSize(appState.getMinClusterSize());
+            ui.setSourceInfo(session.context, appState.getAllItems().length);
+            
+            ui.render(appState, visualizer, true);
+            ui.updateToggleLabelsButton(appState.getArePointLabelsVisible());
+            ui.hideLoading(`Loaded ${appState.getUniqueClusterCount()} clusters from session.`);
+            ui.enableControls();
+        } else if (session.data) {
+            // Case A2: Raw data exists, but analysis wasn't finished. Resume analysis.
+            ui.showLoading('Resuming analysis from saved data...');
+            const visName = session.historyEntry.name;
+            appState.setVisualizationName(visName);
+            ui.setVisualizationTitle(visName);
+            
+            // Re-run pipeline on stored data
+            await runAnalysisPipeline(session.data, session.context);
+        }
+
+    } else if (session.waitingForData) {
+        // --- PATH B: New Data via PostMessage ---
+        const isHomePage = window.location.pathname.endsWith('index.html') || window.location.pathname === '/';
+        if (isHomePage) {
+            return;
+        }
+
+        ui.showLoading('Waiting for data from Twitter/X...');
+        
+        const received = await historyManager.waitForData();
+        
+        if (!received) {
+            ui.showError("No data received. Please try running the Postscope bookmarklet again.");
+            return;
+        }
+
+        const { data, context } = received;
+        
+        if (!context.version || context.version < CURRENT_BOOKMARKLET_VERSION) {
+            ui.showVersionWarning();
+        }
+
+        // 1. SAVE RAW DATA IMMEDIATELY to prevent data loss
+        const initialEntry = await historyManager.createInitialHistoryEntry(context, data);
+        currentSessionId = initialEntry.id;
+        
+        // Update URL immediately so a refresh picks up from Case A2 above
+        history.replaceState(null, '', `#${currentSessionId}`);
+        appState.setVisualizationName(initialEntry.name);
+        ui.setVisualizationTitle(initialEntry.name);
+
+        ui.showLoading('Starting analysis...');
+
+        // 2. RUN ANALYSIS
+        await runAnalysisPipeline(data, context);
     }
 
     document.addEventListener('visibilitychange', () => {
