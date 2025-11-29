@@ -12,33 +12,21 @@
         
         <!-- Controls Panel (Left) -->
         <aside class="controls-panel w-[400px] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col shadow-lg z-10">
-            
-            <!-- Header & Main Controls (Non-scrolling part) -->
+            <!-- ... (Header and other controls remain unchanged) ... -->
             <div class="p-6 shrink-0 space-y-6">
                 <header class="flex justify-between items-center">
                     <h1 class="text-2xl font-bold text-sky-600 dark:text-sky-500 tracking-tight">
                         <a href="index.html" class="hover:text-sky-700 dark:hover:text-sky-400 transition-colors">Postscope</a>
                     </h1>
-                    <!-- Theme Selector -->
                     <div class="theme-selector flex items-center p-1 bg-slate-200 dark:bg-slate-800 rounded-full">
-                        <button data-theme-value="light" title="Light Theme" data-state="inactive">
-                            <span class="material-symbols-outlined">light_mode</span>
-                        </button>
-                        <button data-theme-value="dark" title="Dark Theme" data-state="inactive">
-                            <span class="material-symbols-outlined">dark_mode</span>
-                        </button>
-                        <button data-theme-value="system" title="System Theme" data-state="inactive">
-                           <span class="material-symbols-outlined">desktop_windows</span>
-                        </button>
+                        <button data-theme-value="light" title="Light Theme" data-state="inactive"><span class="material-symbols-outlined">light_mode</span></button>
+                        <button data-theme-value="dark" title="Dark Theme" data-state="inactive"><span class="material-symbols-outlined">dark_mode</span></button>
+                        <button data-theme-value="system" title="System Theme" data-state="inactive"><span class="material-symbols-outlined">desktop_windows</span></button>
                     </div>
                 </header>
                 
-                <!-- Version notification will appear here -->
                 <div id="version-notification-area"></div>
-
-                <!-- Ensure this element is present for the UI controller -->
                 <div id="visualization-title-area" class="relative -mt-2"></div>
-                
                 <div id="source-info" class="text-sm text-slate-700 dark:text-slate-300"></div>
                 
                 <div class="space-y-4">
@@ -54,7 +42,6 @@
                  <div id="status-area"></div>
             </div>
 
-            <!-- Scrollable Area for cluster list -->
             <div class="flex-1 overflow-y-auto px-6 border-t border-slate-200 dark:border-slate-800">
                 <div id="cluster-manager" class="py-6">
                     <label class="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3">Clusters</label>
@@ -64,65 +51,88 @@
 
             <div id="vertical-resizer" class="h-1.5 cursor-row-resize shrink-0 bg-slate-200 dark:bg-slate-800 hover:bg-sky-400 dark:hover:bg-sky-600 transition-colors"></div>
 
-            <!-- Query Input (Footer, non-scrolling, resizable) -->
             <div id="query-container" class="shrink-0 p-6 flex flex-col" style="height: 10rem;">
                 <label for="query-input" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Find Your Own Text</label>                
-                <textarea 
-                    id="query-input" 
-                    placeholder="Type or paste text to see where it lands on the map..." 
-                    class="w-full flex-1 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"
-                ></textarea>                
+                <textarea id="query-input" placeholder="Type or paste text to see where it lands on the map..." class="w-full flex-1 px-3 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500 transition placeholder:text-slate-400 dark:placeholder:text-slate-500 resize-none"></textarea>                
             </div>
         </aside>
 
         <!-- Visualization Panel (Right) -->
-        <main class="visualization-panel flex-1 flex flex-col bg-slate-100 dark:bg-slate-800">
-            <!-- Map takes up remaining space -->
+        <main class="visualization-panel flex-1 flex flex-col bg-slate-100 dark:bg-slate-800 relative">
             <div id="visualization-container" class="flex-1 relative min-h-0"></div>
             
-            <!-- Response list appears here, below the map -->
+            <!-- Redesigned Timeline Controls -->
+            <!-- The chart container is now 64px high, always visible -->
+            <div id="timeline-controls" class="bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 px-4 py-2 shrink-0 hidden select-none">
+                
+                <!-- Labels -->
+                <div class="flex justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                    <span id="timeline-start-label">Start</span>
+                    <span id="timeline-end-label">End</span>
+                </div>
+
+                <!-- The Interactive Brush Area -->
+                <div id="timeline-brush-container" class="relative w-full h-12 cursor-crosshair">
+                    
+                    <!-- 1. The Canvas (Background Data) -->
+                    <canvas id="timeline-histogram" class="absolute inset-0 h-full w-full pointer-events-none z-0 opacity-40"></canvas>
+                    
+                    <!-- 2. The Selection Window (Highlighted Area) -->
+                    <!-- This div represents the selected time. It has a higher opacity background or border -->
+                    <div id="timeline-window" class="absolute h-full z-10 top-0 cursor-grab active:cursor-grabbing group">
+                        
+                        <!-- Highlighting the selection: We render the same histogram inside here with full opacity? 
+                             Or simpler: Just a border box. Let's do a border box with a light background. -->
+                        <div class="absolute inset-0 bg-sky-500/10 border-t-2 border-b-2 border-sky-500 dark:border-sky-400"></div>
+                        
+                        <!-- Left Handle -->
+                        <div class="timeline-handle handle-left absolute left-0 top-0 bottom-0 w-4 -ml-2 cursor-ew-resize z-20 flex items-center justify-center group-hover:opacity-100 transition-opacity">
+                            <div class="w-1.5 h-6 bg-sky-500 rounded-full shadow-sm"></div>
+                        </div>
+
+                        <!-- Right Handle -->
+                        <div class="timeline-handle handle-right absolute right-0 top-0 bottom-0 w-4 -mr-2 cursor-ew-resize z-20 flex items-center justify-center group-hover:opacity-100 transition-opacity">
+                             <div class="w-1.5 h-6 bg-sky-500 rounded-full shadow-sm"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 3. Dimmer Overlays (Optional, to darken unselected areas) -->
+                    <div id="timeline-dimmer-left" class="absolute left-0 top-0 bottom-0 bg-slate-100/50 dark:bg-slate-900/60 z-0 pointer-events-none"></div>
+                    <div id="timeline-dimmer-right" class="absolute right-0 top-0 bottom-0 bg-slate-100/50 dark:bg-slate-900/60 z-0 pointer-events-none"></div>
+                </div>
+            </div>
+
             <div id="response-list-container" class="hidden"></div>
         </main>
 
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- ... (rest of scripts same) ... -->
     <script>
-        // --- THEME SYSTEM ---
+        // ... (Theme script same) ...
         (() => {
             const THEME_STORAGE_KEY = 'postscope-theme';
-
             const applyTheme = (theme) => {
                 const root = document.documentElement;
                 const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
                 root.classList.toggle('dark', isDark);
-
                 document.querySelectorAll('[data-theme-value]').forEach(btn => {
                     const isSelected = btn.dataset.themeValue === theme;
                     btn.setAttribute('data-state', isSelected ? 'active' : 'inactive');
                 });
             };
-
             const setTheme = (theme) => {
-                if (!['light', 'dark', 'system'].includes(theme)) {
-                    theme = 'system';
-                }
+                if (!['light', 'dark', 'system'].includes(theme)) { theme = 'system'; }
                 localStorage.setItem(THEME_STORAGE_KEY, theme);
                 applyTheme(theme);
                 window.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
             };
-
             const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
             setTheme(savedTheme);
-
-            document.querySelectorAll('[data-theme-value]').forEach(btn => {
-                btn.addEventListener('click', (e) => setTheme(e.currentTarget.dataset.themeValue));
-            });
-            
+            document.querySelectorAll('[data-theme-value]').forEach(btn => btn.addEventListener('click', (e) => setTheme(e.currentTarget.dataset.themeValue)));
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
                 const currentTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
-                if (currentTheme === 'system') {
-                    applyTheme('system');
-                }
+                if (currentTheme === 'system') { applyTheme('system'); }
             });
         })();
     </script>

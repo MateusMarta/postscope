@@ -84,6 +84,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 visualizer.highlightPoint(coords);
             }
         },
+        onTimeRangeChange: (start, end) => {
+            appState.setTimeRange(start, end);
+            ui.render(appState, visualizer, false);
+            saveCurrentState();
+        },
         getMapInstance: () => visualizer.getMapInstance()
     });
 
@@ -100,6 +105,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             ui.setMinClusterSize(initialMinSize);
             appState.updateClusteringResults(results.labels, initialMinSize);
             
+            // Initialize timeline with new data
+            ui.initializeTimeline(appState);
+
             // Save complete state to the existing DB entry
             saveCurrentState();
 
@@ -138,6 +146,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             ui.setMinClusterSize(appState.getMinClusterSize());
             ui.setSourceInfo(session.context, appState.getAllItems().length);
             
+            // Initialize timeline from restored state
+            ui.initializeTimeline(appState);
+
             ui.render(appState, visualizer, true);
             ui.updateToggleLabelsButton(appState.getArePointLabelsVisible());
             ui.hideLoading(`Loaded ${appState.getUniqueClusterCount()} clusters from session.`);

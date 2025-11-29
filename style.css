@@ -3,173 +3,74 @@
 @tailwind utilities;
 
 @layer base {
-    /* Custom scrollbar for a modern look */
-    ::-webkit-scrollbar {
-        width: 12px;
-        height: 12px;
-    }
-    ::-webkit-scrollbar-track {
-        @apply bg-slate-100 dark:bg-slate-900;
-    }
-    ::-webkit-scrollbar-thumb {
-        @apply bg-slate-300 dark:bg-slate-700 rounded-full border-2 border-solid border-slate-100 dark:border-slate-900;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        @apply bg-slate-400 dark:bg-slate-600;
-    }
-
-    /* Default styling for Google Material Symbols */
-    .material-symbols-outlined {
-        font-size: 20px; /* Corresponds to h-5/w-5 */
-        line-height: 1;
-        user-select: none;
-        vertical-align: middle;
-        flex-shrink: 0;
-        display: inline-block;
-    }
-    
-    .dark input[type="number"] {
-        color-scheme: dark; /* Styles the spinner arrows for dark theme */
-    }
+    ::-webkit-scrollbar { width: 12px; height: 12px; }
+    ::-webkit-scrollbar-track { @apply bg-slate-100 dark:bg-slate-900; }
+    ::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-700 rounded-full border-2 border-solid border-slate-100 dark:border-slate-900; }
+    ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-600; }
+    .material-symbols-outlined { font-size: 20px; line-height: 1; user-select: none; vertical-align: middle; flex-shrink: 0; display: inline-block; }
+    .dark input[type="number"] { color-scheme: dark; }
 }
 
-
 @layer components {
-    /* NEW: Standardized icon-only button */
-    .icon-btn {
-        @apply inline-flex items-center justify-center rounded-full transition-colors duration-150;
-    }
-    
-    /* Theme Selector styles - REFINED */
-    .theme-selector button {
-        @apply icon-btn w-9 h-9 text-slate-500 dark:text-slate-400;
-    }
-    .theme-selector button:hover {
-        @apply text-sky-600 dark:text-sky-400 bg-slate-200/60 dark:bg-slate-700/60;
-    }
-    .theme-selector button[data-state='active'] {
-        @apply bg-white dark:bg-slate-900 shadow-sm text-sky-600 dark:text-sky-400;
-    }
+    .icon-btn { @apply inline-flex items-center justify-center rounded-full transition-colors duration-150; }
+    .theme-selector button { @apply icon-btn w-9 h-9 text-slate-500 dark:text-slate-400; }
+    .theme-selector button:hover { @apply text-sky-600 dark:text-sky-400 bg-slate-200/60 dark:bg-slate-700/60; }
+    .theme-selector button[data-state='active'] { @apply bg-white dark:bg-slate-900 shadow-sm text-sky-600 dark:text-sky-400; }
+    #min-cluster-size, #query-input, #search-history-input { @apply rounded-lg; }
+    .spinner { @apply border-4 border-slate-200 dark:border-slate-600 border-l-sky-500 rounded-full w-5 h-5 animate-spin; }
+    .info-banner { @apply text-sm p-4 bg-sky-50 dark:bg-sky-900/20 border-l-4 border-sky-500 dark:border-sky-400 text-sky-800 dark:text-sky-200 mt-4 rounded-lg flex items-center gap-3; }
+    .info-banner p { @apply m-0 flex-1; }
+    .version-warning-banner { @apply text-sm p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-500/50 text-amber-900 dark:text-amber-200 rounded-lg flex items-start gap-3; }
+    .version-warning-banner a { @apply font-bold underline hover:text-amber-700 dark:hover:text-amber-400; }
+    .error-container { @apply text-center p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-400 text-red-800 dark:text-red-200 mt-4 rounded-lg; }
+    .error-container p { @apply m-0 font-medium; }
+    #source-info blockquote { @apply mt-2 ml-0 pl-3 border-l-2 border-slate-300 dark:border-slate-600 italic text-slate-500 dark:text-slate-400; }
+    .title-edit-btn { @apply icon-btn w-8 h-8 text-slate-400 dark:text-slate-500; }
+    .title-edit-btn:hover { @apply bg-slate-200 dark:bg-slate-700 text-sky-600 dark:text-sky-400; }
+    .cluster-item { @apply flex items-center gap-3 p-2 rounded-lg cursor-pointer border-2 border-transparent transition-colors duration-150 hover:bg-slate-200/60 dark:hover:bg-slate-800/60; }
+    .cluster-item.active { @apply bg-sky-100/70 dark:bg-sky-900/30 border-sky-500 dark:border-sky-600; }
+    .cluster-item.cluster-others { @apply italic text-slate-500 dark:text-slate-400; }
+    .legend-color-swatch { @apply w-4 h-4 rounded-sm shrink-0; }
+    .cluster-item input[type="text"] { @apply flex-grow bg-transparent p-1 -m-1 rounded-lg focus:bg-white dark:focus:bg-slate-950 focus:ring-2 focus:ring-sky-500 focus:outline-none transition text-sm; }
+    .cluster-item-count { @apply text-xs font-medium text-slate-500 dark:text-slate-300 bg-slate-200 dark:bg-slate-700/80 px-2 py-0.5 rounded-full whitespace-nowrap; }
+    .cluster-visibility-toggle { @apply icon-btn w-8 h-8 bg-transparent border-none cursor-pointer text-slate-400 dark:text-slate-500; }
+    .cluster-visibility-toggle:hover { @apply bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300; }
+    .cluster-visibility-toggle.visible { @apply text-sky-600 dark:text-sky-400; }
+    .cluster-visibility-toggle .material-symbols-outlined { @apply text-2xl; }
+    #response-list-container { @apply h-[35vh] bg-white dark:bg-slate-700 border-t-2 border-slate-200 dark:border-slate-600/70 shadow-inner dark:shadow-slate-950/50 overflow-y-auto; }
+    .cluster-detail-view { @apply p-4 grid gap-2; }
+    .response-item { @apply bg-slate-100 dark:bg-slate-800/60 rounded-lg p-3 text-sm leading-snug border border-slate-200/80 dark:border-slate-600/80 cursor-pointer transition-colors hover:border-slate-300 dark:hover:border-slate-500; }
+    .response-item:hover { @apply bg-slate-200/70 dark:bg-slate-800; }
+    .response-item.active { @apply bg-sky-100 dark:bg-sky-900/40 border-sky-400 dark:border-sky-500 ring-2 ring-sky-300 dark:ring-sky-600/70; }
+    .response-item b { @apply text-slate-900 dark:text-slate-100 font-semibold; }
 
-    /* Inputs - consistent radius */
-    #min-cluster-size, #query-input, #search-history-input {
-        @apply rounded-lg;
-    }
+    /* New Sidebar Item Layout */
+    .response-item-inner { @apply flex items-start gap-3; }
+    .response-avatar-container { @apply shrink-0; }
+    .response-avatar { @apply w-10 h-10 rounded-full object-cover bg-slate-200 dark:bg-slate-700; }
+    .response-avatar-placeholder { @apply w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-slate-500 dark:text-slate-300 font-bold; }
+    .response-content { @apply flex-1 min-w-0; }
+    .response-header { @apply break-words; }
 
-    /* Styles for viewer.html dynamic elements */
-    .spinner {
-        @apply border-4 border-slate-200 dark:border-slate-600 border-l-sky-500 rounded-full w-5 h-5 animate-spin;
-    }
-    .info-banner {
-        @apply text-sm p-4 bg-sky-50 dark:bg-sky-900/20 border-l-4 border-sky-500 dark:border-sky-400 text-sky-800 dark:text-sky-200 mt-4 rounded-lg flex items-center gap-3;
-    }
-    .info-banner p {
-        @apply m-0 flex-1;
-    }
-    .version-warning-banner {
-        @apply text-sm p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-500/50 text-amber-900 dark:text-amber-200 rounded-lg flex items-start gap-3;
-    }
-    .version-warning-banner a {
-        @apply font-bold underline hover:text-amber-700 dark:hover:text-amber-400;
-    }
-    .error-container {
-        @apply text-center p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-400 text-red-800 dark:text-red-200 mt-4 rounded-lg;
-    }
-    .error-container p {
-        @apply m-0 font-medium;
-    }
-    
-    #source-info blockquote {
-        @apply mt-2 ml-0 pl-3 border-l-2 border-slate-300 dark:border-slate-600 italic text-slate-500 dark:text-slate-400;
-    }
-
-    .title-edit-btn {
-        @apply icon-btn w-8 h-8 text-slate-400 dark:text-slate-500;
-    }
-    .title-edit-btn:hover {
-        @apply bg-slate-200 dark:bg-slate-700 text-sky-600 dark:text-sky-400;
-    }
-
-    .cluster-item {
-        @apply flex items-center gap-3 p-2 rounded-lg cursor-pointer border-2 border-transparent transition-colors duration-150 hover:bg-slate-200/60 dark:hover:bg-slate-800/60;
-    }
-    .cluster-item.active {
-        @apply bg-sky-100/70 dark:bg-sky-900/30 border-sky-500 dark:border-sky-600;
-    }
-    .cluster-item.cluster-others {
-        @apply italic text-slate-500 dark:text-slate-400;
-    }
-    .legend-color-swatch {
-        @apply w-4 h-4 rounded-sm shrink-0;
-    }
-    .cluster-item input[type="text"] {
-        @apply flex-grow bg-transparent p-1 -m-1 rounded-lg focus:bg-white dark:focus:bg-slate-950 focus:ring-2 focus:ring-sky-500 focus:outline-none transition text-sm;
-    }
-    .cluster-item-count {
-        @apply text-xs font-medium text-slate-500 dark:text-slate-300 bg-slate-200 dark:bg-slate-700/80 px-2 py-0.5 rounded-full whitespace-nowrap;
-    }
-    .cluster-visibility-toggle {
-        @apply icon-btn w-8 h-8 bg-transparent border-none cursor-pointer text-slate-400 dark:text-slate-500;
-    }
-    .cluster-visibility-toggle:hover {
-        @apply bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300;
-    }
-    .cluster-visibility-toggle.visible {
-        @apply text-sky-600 dark:text-sky-400;
-    }
-    .cluster-visibility-toggle .material-symbols-outlined {
-        @apply text-2xl; /* 24px */
-    }
-
-    /* STYLING FOR THE RESPONSE LIST CONTAINER */
-    #response-list-container {
-        @apply h-[35vh] bg-white dark:bg-slate-700 border-t-2 border-slate-200 dark:border-slate-600/70 shadow-inner dark:shadow-slate-950/50 overflow-y-auto;
-    }
-
-    .cluster-detail-view {
-        @apply p-4 grid gap-2;
-    }
-    .response-item {
-        @apply bg-slate-100 dark:bg-slate-800/60 rounded-lg p-3 text-sm leading-snug border border-slate-200/80 dark:border-slate-600/80 cursor-pointer transition-colors hover:border-slate-300 dark:hover:border-slate-500;
-    }
-    .response-item:hover {
-        @apply bg-slate-200/70 dark:bg-slate-800;
-    }
-    .response-item.active {
-        @apply bg-sky-100 dark:bg-sky-900/40 border-sky-400 dark:border-sky-500 ring-2 ring-sky-300 dark:ring-sky-600/70;
-    }
-    .response-item b {
-        @apply text-slate-900 dark:text-slate-100 font-semibold;
-    }
-
-    /* Custom styles for the map popup */
-    .post-popup .maplibregl-popup-content {
-        @apply p-0 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 font-sans;
-        max-width: 320px !important;
-        font-size: 14px;
-    }
-
-    .post-popup .maplibregl-popup-tip {
-        border-top-color: white;
-    }
-    .dark .post-popup .maplibregl-popup-tip {
-        border-top-color: #0f172a; /* slate-900 */
-    }
-
+    /* Map Popups */
+    .post-popup .maplibregl-popup-content { @apply p-0 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 font-sans; max-width: 320px !important; font-size: 14px; }
+    .post-popup .maplibregl-popup-tip { border-top-color: white; }
+    .dark .post-popup .maplibregl-popup-tip { border-top-color: #0f172a; }
     .post-popup-content { @apply p-3; }
-    .popup-header { @apply flex flex-col mb-2; }
+    
+    .popup-header-row { @apply flex items-center gap-3 mb-2; }
+    .popup-avatar-container { @apply shrink-0; }
+    .popup-avatar { @apply w-10 h-10 rounded-full object-cover bg-slate-200 dark:bg-slate-700; }
+    .popup-avatar-placeholder { @apply w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-600 flex items-center justify-center text-slate-500 dark:text-slate-300 font-bold; }
+    
+    .popup-meta { @apply flex flex-col justify-center; }
     .popup-author { @apply font-bold text-slate-900 dark:text-slate-100; }
     .popup-timestamp { @apply text-xs text-slate-500 dark:text-slate-400; }
     .popup-body { @apply text-slate-800 dark:text-slate-200 leading-snug; word-wrap: break-word; }
     .popup-footer { @apply mt-2 text-red-500 dark:text-red-400 font-semibold text-xs flex items-center; }
 
-    /* For index.html history items */
-    .history-item-btn {
-        @apply icon-btn w-9 h-9 text-slate-400 dark:text-slate-500;
-    }
-    .history-item-btn:hover {
-        @apply bg-slate-100 dark:hover:bg-slate-700;
-    }
+    .history-item-btn { @apply icon-btn w-9 h-9 text-slate-400 dark:text-slate-500; }
+    .history-item-btn:hover { @apply bg-slate-100 dark:hover:bg-slate-700; }
     .history-item-btn.edit-btn:hover { @apply text-sky-500 dark:hover:text-sky-400; }
     .history-item-btn.export-item-btn:hover { @apply text-sky-500 dark:hover:text-sky-400; }
     .history-item-btn.delete-btn:hover { @apply text-red-500 dark:hover:text-red-400; }

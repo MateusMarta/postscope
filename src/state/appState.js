@@ -5,11 +5,17 @@ export class AppState {
         this.embeddings = [];
         this.data10D = [];
         this.data2D = [];
-        this.arePointLabelsVisible = true; // Default to visible for new visualizations
+        this.arePointLabelsVisible = true;
 
         this.currentLabels = [];
         this.currentMinClusterSize = 5;
         
+        // Date range state
+        this.globalMinDate = 0;
+        this.globalMaxDate = 0;
+        this.currentStartDate = 0;
+        this.currentEndDate = 0;
+
         // Caches all data related to a specific clustering run
         this.clusteringDataByMinSize = new Map();
 
@@ -20,6 +26,9 @@ export class AppState {
         this.labelToCustIdMap = new Map();
         
         this.nextCustomizationId = 0;
+
+        // Map of author handle -> { url, timestamp }
+        this.authorProfilePics = new Map();
     }
 
     // --- GETTERS ---
@@ -34,17 +43,154 @@ export class AppState {
     getCustomizationsForCurrentSize = () => this.allSettingsCustomizations.get(this.currentMinClusterSize) || new Map();
     getLabelToCustIdMap = () => this.labelToCustIdMap;
     getUniqueClusterCount = () => new Set(this.currentLabels.filter(l => l !== -1)).size;
+    getAuthorProfilePics = () => this.authorProfilePics;
     hasClusteringForSize = (size) => this.clusteringDataByMinSize.has(size);
+    
+    getTimeRange = () => ({
+        globalMin: this.globalMinDate,
+        globalMax: this.globalMaxDate,
+        currentStart: this.currentStartDate,
+        currentEnd: this.currentEndDate
+    });
 
     // --- SETTERS & STATE MODIFIERS ---
     setVisualizationName = (name) => { this.visualizationName = name; };
     setArePointLabelsVisible = (isVisible) => { this.arePointLabelsVisible = isVisible; };
+
+    setTimeRange(start, end) {
+        this.currentStartDate = start;
+        this.currentEndDate = end;
+    }
 
     setInitialData(allItems, embeddings, data10D, data2D) {
         this.allItems = allItems.map((item, i) => ({ ...item, embedding: embeddings[i] }));
         this.embeddings = embeddings;
         this.data10D = data10D;
         this.data2D = data2D;
+
+        this._recalculateProfilePics();
+
+        // Calculate global date range
+        let minTime = Infinity;
+        let maxTime = -Infinity;
+        let hasTime = false;
+
+        this.allItems.forEach(item => {
+            if (item.timestamp) {
+                const t = new Date(item.timestamp).getTime();
+                if (!isNaN(t)) {
+                    if (t < minTime) minTime = t;
+                    if (t > maxTime) maxTime = t;
+                    hasTime = true;
+                }
+            }
+        });
+
+        if (hasTime) {
+            this.globalMinDate = minTime;
+            this.globalMaxDate = maxTime;
+            this.currentStartDate = minTime;
+            this.currentEndDate = maxTime;
+        } else {
+            this.globalMinDate = 0;
+            this.globalMaxDate = 100;
+            this.currentStartDate = 0;
+            this.currentEndDate = 100;
+        }
+    }
+
+    _recalculateProfilePics() {
+        this.authorProfilePics.clear();
+        this.allItems.forEach(item => {
+            if (item.profilePic && item.author) {
+                const current = this.authorProfilePics.get(item.author);
+                // Use item timestamp if available, otherwise consider it 'now' or strict comparison depends on data
+                // If item has no timestamp, we treat it as old, or just overwrite if missing
+                const itemTime = item.timestamp ? new Date(item.timestamp).getTime() : 0;
+                
+                if (!current || itemTime >= current.timestamp) {
+                    this.authorProfilePics.set(item.author, { url: item.profilePic, timestamp: itemTime });
+                }
+            }
+        });
+    }
+
+    /**
+     * Calculates histogram bins for the timeline.
+     * @param {number} binCount Number of bars in the histogram
+     * @returns {number[]} Array of counts per bin
+     */
+    getHistogramData(binCount = 60) {
+        if (!this.allItems.length || this.globalMaxDate <= this.globalMinDate) {
+            return new Array(binCount).fill(0);
+        }
+
+        const range = this.globalMaxDate - this.globalMinDate;
+        const bins = new Array(binCount).fill(0);
+
+        this.allItems.forEach(item => {
+            if (!item.timestamp) return;
+            const t = new Date(item.timestamp).getTime();
+            if (isNaN(t)) return;
+
+            // Calculate bin index
+            let i = Math.floor(((t - this.globalMinDate) / range) * binCount);
+            
+            // Clamp to last bin if exactly on max date
+            i = Math.min(i, binCount - 1);
+            i = Math.max(i, 0); // Safety check
+            
+            bins[i]++;
+        });
+
+        return bins;
+    }
+
+    /**
+     * Returns subsets of items, coords, and labels that fall within the selected time range.
+     * Maintains parallel array structure.
+     */
+    getFilteredData() {
+        if (!this.allItems.length) {
+            return { items: [], coords: [], labels: [] };
+        }
+
+        // If range covers everything, return everything (optimization)
+        if (this.currentStartDate <= this.globalMinDate && this.currentEndDate >= this.globalMaxDate) {
+            return {
+                items: this.allItems,
+                coords: this.data2D,
+                labels: this.currentLabels
+            };
+        }
+
+        const items = [];
+        const coords = [];
+        const labels = [];
+
+        this.allItems.forEach((item, i) => {
+            let itemTime = 0;
+            if (item.timestamp) {
+                itemTime = new Date(item.timestamp).getTime();
+            }
+            
+            const isValidTime = !isNaN(itemTime) && itemTime > 0;
+            
+            if (isValidTime) {
+                if (itemTime >= this.currentStartDate && itemTime <= this.currentEndDate) {
+                    items.push(item);
+                    coords.push(this.data2D[i]);
+                    labels.push(this.currentLabels[i]);
+                }
+            } else {
+                // Keep items without timestamps
+                items.push(item);
+                coords.push(this.data2D[i]);
+                labels.push(this.currentLabels[i]);
+            }
+        });
+
+        return { items, coords, labels };
     }
 
     switchToExistingClustering(minSize) {
@@ -163,7 +309,7 @@ export class AppState {
 
         return {
             visualizationName: this.visualizationName,
-            allItems: this.allItems,
+            allItems: this.allItems, // allItems includes profilePic now
             embeddings: this.embeddings.map(e => Array.from(e)),
             data10D: this.data10D,
             data2D: this.data2D,
@@ -172,14 +318,22 @@ export class AppState {
             minClusterSize: this.currentMinClusterSize,
             customizations: serializableCustomizations,
             clusteringData: serializableClusteringData,
-            nextCustomizationId: this.nextCustomizationId
+            nextCustomizationId: this.nextCustomizationId,
+            // Date State
+            globalMinDate: this.globalMinDate,
+            globalMaxDate: this.globalMaxDate,
+            currentStartDate: this.currentStartDate,
+            currentEndDate: this.currentEndDate
         };
     }
 
     setFullState(state) {
         this.visualizationName = state.visualizationName || "Untitled Visualization";
         this.allItems = state.allItems || [];
-        this.arePointLabelsVisible = state.arePointLabelsVisible ?? true; // Default to true if not present
+        this.arePointLabelsVisible = state.arePointLabelsVisible ?? true; 
+
+        // Reconstruct profile pic map from loaded items
+        this._recalculateProfilePics();
 
         const loadedEmbeddings = state.embeddings || [];
         if (loadedEmbeddings.length > 0 && !Array.isArray(loadedEmbeddings[0]) && typeof loadedEmbeddings[0] === 'object') {
@@ -193,6 +347,12 @@ export class AppState {
         this.currentLabels = state.currentLabels || [];
         this.currentMinClusterSize = state.minClusterSize || 5;
         this.nextCustomizationId = state.nextCustomizationId || 0;
+
+        // Restore Dates
+        this.globalMinDate = state.globalMinDate || 0;
+        this.globalMaxDate = state.globalMaxDate || 0;
+        this.currentStartDate = state.currentStartDate !== undefined ? state.currentStartDate : this.globalMinDate;
+        this.currentEndDate = state.currentEndDate !== undefined ? state.currentEndDate : this.globalMaxDate;
 
         if (state.customizations) {
             this.allSettingsCustomizations = new Map(

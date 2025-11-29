@@ -326,6 +326,10 @@
                         const timeElement = article.querySelector('time[datetime]');
                         const postTimestamp = timeElement ? timeElement.getAttribute('datetime') : '';
                         
+                        // Capture Profile Picture
+                        const avatarImg = article.querySelector('div[data-testid="Tweet-User-Avatar"] img');
+                        const profilePic = avatarImg ? avatarImg.src : '';
+
                         let postUrl = '';
                         if (timeElement) {
                             const postLinkElement = timeElement.closest('a');
@@ -345,7 +349,7 @@
                         const uniqueKey = postUrl || (authorHandle + text.substring(0,50) + postTimestamp);
                         
                         if (!foundTweets.has(uniqueKey)) {
-                            foundTweets.set(uniqueKey, { author: authorHandle, text: text, likes: likes, timestamp: postTimestamp, url: postUrl });
+                            foundTweets.set(uniqueKey, { author: authorHandle, text: text, likes: likes, timestamp: postTimestamp, url: postUrl, profilePic: profilePic });
                             updateStatus(foundTweets.size);
                         }
                     }
@@ -395,10 +399,10 @@
                     hint.style.display = 'none'; // Hide the "keep open" text
                     status.textContent = 'Collection done.';
                     
-                    let csvContent = 'author,text,likes,timestamp,url\n';
+                    let csvContent = 'author,text,likes,timestamp,url,profilePic\n';
                     foundTweets.forEach(t => {
                          const sanitizedText = t.text.replace(/(\r\n|\n|\r)/gm, " ").replace(/"/g, '""');
-                         csvContent += `"${t.author}","${sanitizedText}","${t.likes}","${t.timestamp}","${t.url}"\n`;
+                         csvContent += `"${t.author}","${sanitizedText}","${t.likes}","${t.timestamp}","${t.url}","${t.profilePic||''}"\n`;
                     });
 
                     const sendDataToWindow = (targetWin) => {

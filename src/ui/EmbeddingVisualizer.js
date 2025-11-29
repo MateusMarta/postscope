@@ -6,6 +6,7 @@ export class EmbeddingVisualizer {
         this.containerId = containerId;
         this.popup = null; // To hold the popup instance
         this.isDarkTheme = document.documentElement.classList.contains('dark');
+        this.loadedImages = new Set(); // Track loaded author images
 
         this.map = new maplibregl.Map({
             container: containerId,
@@ -103,11 +104,22 @@ export class EmbeddingVisualizer {
             } catch (e) { /* ignore invalid date */ }
         }
 
+        // Default placeholder if no profile pic
+        let avatarHtml = `<div class="popup-avatar-placeholder">${properties.author.charAt(0).toUpperCase()}</div>`;
+        if (properties.profile_pic) {
+            avatarHtml = `<img src="${properties.profile_pic}" class="popup-avatar" alt="${properties.author}" onerror="this.style.display='none'"/>`;
+        }
+
         const popupContent = `
             <div class="post-popup-content">
-                <div class="popup-header">
-                    <strong class="popup-author">@${properties.author}</strong>
-                    ${timestampHtml}
+                <div class="popup-header-row">
+                    <div class="popup-avatar-container">
+                        ${avatarHtml}
+                    </div>
+                    <div class="popup-meta">
+                        <strong class="popup-author">@${properties.author}</strong>
+                        ${timestampHtml}
+                    </div>
                 </div>
                 <div class="popup-body">${properties.text}</div>
                 <div class="popup-footer">
@@ -119,7 +131,9 @@ export class EmbeddingVisualizer {
         this.popup = new maplibregl.Popup({
             closeButton: false,
             closeOnClick: false,
-            className: 'post-popup'
+            className: 'post-popup',
+            maxWidth: '320px',
+            offset: 15
         })
         .setLngLat(coordinates)
         .setHTML(popupContent)
@@ -150,7 +164,7 @@ export class EmbeddingVisualizer {
             layout: {
                 'text-field': ['get', 'text'],
                 'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
-                'text-radial-offset': ['+', 0.5, ['*', 0.1, ['log10', ['+', 1, ['coalesce', ['get', 'likes'], 0]]]]],
+                'text-radial-offset': ['+', 1.0, ['*', 0.1, ['log10', ['+', 1, ['coalesce', ['get', 'likes'], 0]]]]],
                 'text-justify': 'auto',
                 'text-size': 12,
                 'symbol-sort-key': ['*', -1, ['coalesce', ['get', 'likes'], 0]],
@@ -169,9 +183,9 @@ export class EmbeddingVisualizer {
         this.map.addLayer({
             id: 'highlight-point-circle', type: 'circle', source: 'highlight-point',
             paint: {
-                'circle-radius': 12,
+                'circle-radius': 18,
                 'circle-color': 'rgba(0,0,0,0)',
-                'circle-stroke-width': 3,
+                'circle-stroke-width': 4,
                 'circle-stroke-color': '#0ea5e9' // sky-500
             }
         });
@@ -243,11 +257,52 @@ export class EmbeddingVisualizer {
         this.map.getSource('cluster-names').setData({ type: 'FeatureCollection', features: nameFeatures });
     }
 
-    // FIX: Added shouldFitBounds argument to control zooming behavior (Bug 2)
-    render(pointsData, twoDimCoords, labels, customizations, labelToCustIdMap, areLabelsVisible, shouldFitBounds = false) {
+    _loadAuthorImages(authors, authorProfilePicsMap) {
+        authors.forEach(author => {
+            if (!this.loadedImages.has(author)) {
+                this.loadedImages.add(author); // Mark as requested to avoid duplicate calls
+                
+                const data = authorProfilePicsMap.get(author);
+                if (data && data.url) {
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.src = data.url;
+                    img.onload = () => {
+                        // Create a circular crop of the profile picture
+                        const canvas = document.createElement('canvas');
+                        const size = 64; // Standard size for texture
+                        canvas.width = size;
+                        canvas.height = size;
+                        const ctx = canvas.getContext('2d');
+                        
+                        ctx.beginPath();
+                        ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+                        ctx.closePath();
+                        ctx.clip();
+                        
+                        ctx.drawImage(img, 0, 0, size, size);
+                        
+                        if (!this.map.hasImage(author)) {
+                            this.map.addImage(author, ctx.getImageData(0, 0, size, size));
+                        }
+                    };
+                    img.onerror = () => {
+                        console.warn(`Failed to load profile pic for ${author}`);
+                    };
+                }
+            }
+        });
+    }
+
+    render(pointsData, twoDimCoords, labels, customizations, labelToCustIdMap, areLabelsVisible, authorProfilePicsMap, shouldFitBounds = false) {
         if (!this.map.isStyleLoaded() || twoDimCoords.length === 0) {
             this.map.once('load', () => this.render(...arguments));
             return;
+        }
+
+        const uniqueAuthors = new Set(pointsData.map(p => p.author));
+        if (authorProfilePicsMap) {
+            this._loadAuthorImages(uniqueAuthors, authorProfilePicsMap);
         }
 
         const geojson = { type: "FeatureCollection", features: pointsData.map((point, i) => ({
@@ -258,24 +313,61 @@ export class EmbeddingVisualizer {
                 timestamp: point.timestamp,
                 likes: point.likes || 0,
                 url: point.url,
-                cluster_label: labels[i]
+                cluster_label: labels[i],
+                profile_pic: point.profilePic // Pass explicit profile pic url for popups
             }
         }))};
         this.map.getSource('points').setData(geojson);
         
+        // Remove layers to refresh order if needed, but here we just ensure they exist
         if (this.map.getLayer('points-circles')) this.map.removeLayer('points-circles');
+        if (this.map.getLayer('points-icons')) this.map.removeLayer('points-icons');
         
-        const circleStrokeColor = this.isDarkTheme ? 'rgba(15, 23, 42, 0.5)' : 'rgba(255, 255, 255, 0.8)'; // slate-950 / white
+        // LOGIC:
+        // Base radius logic remains.
+        // Requested: "Make profile picture just 10% larger".
+        // Requested: "Make cluster color ring twice as thick".
+        // Old ring ~2px. New ring ~4px.
+        // Old logic: Radius = X. Icon Scale = (X - 2) / 32.
+        // New logic: 
+        // 1. Scale up the base Radius by 10% to make the whole point larger.
+        // 2. Adjust the Icon Scale subtraction to create a 4px gap (ring) instead of 2px.
+
+        const baseRadius = ['+', 6, ['*', 3, ['log10', ['+', 1, ['coalesce', ['get', 'likes'], 0]]]]];
         
+        // Scale radius up by 1.15 (15%) to accommodate larger image + thicker ring
+        const radiusExpression = ['*', baseRadius, 1.15]; 
+
+        // 1. The colored ring (Background Circle)
         this.map.addLayer({
             id: 'points-circles', type: 'circle', source: 'points',
             layout: { 'circle-sort-key': ['coalesce', ['get', 'likes'], 0] },
             paint: {
-                'circle-radius': ['+', 4, ['*', 2, ['log10', ['+', 1, ['coalesce', ['get', 'likes'], 0]]]]],
+                'circle-radius': radiusExpression,
                 'circle-color': this._generateColorScale(labels),
-                'circle-stroke-width': 1, 'circle-stroke-color': circleStrokeColor
+                'circle-opacity': 1,
             }
         }, 'point-labels');
+
+        // 2. The Profile Picture (Symbol Layer)
+        // Image texture size is 64px.
+        // Target Radius = Circle Radius - 4px (for the thicker ring).
+        // Scale = (Radius - 4) * 2 / 64 = (Radius - 4) / 32.
+        const iconSizeExpression = ['max', 0, ['/', ['-', radiusExpression, 4], 32]];
+
+        this.map.addLayer({
+            id: 'points-icons', type: 'symbol', source: 'points',
+            layout: {
+                'icon-image': ['get', 'author'],
+                'icon-size': iconSizeExpression,
+                'icon-allow-overlap': true,
+                'icon-ignore-placement': true,
+                'symbol-sort-key': ['coalesce', ['get', 'likes'], 0]
+            },
+            paint: {
+                'icon-opacity': 1
+            }
+        }, 'point-labels'); // Place below labels but above circles
         
         if (this.map.getLayer('point-labels')) {
             this.map.setLayoutProperty('point-labels', 'visibility', areLabelsVisible ? 'visible' : 'none');
@@ -288,7 +380,6 @@ export class EmbeddingVisualizer {
             if (source) source.setData({ type: 'FeatureCollection', features: [] });
         }
 
-        // FIX: Only reset camera if explicitly requested (e.g., initial load or full recluster)
         if (shouldFitBounds) {
             const bounds = new maplibregl.LngLatBounds();
             twoDimCoords.forEach(coord => bounds.extend(coord));

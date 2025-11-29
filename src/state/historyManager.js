@@ -14,23 +14,16 @@ export class HistoryManager {
 
     /**
      * Retrieves session data.
-     * 1. Checks if a numeric ID is in the URL hash (restoring from history).
-     * 2. If not, sets up a listener for `postMessage` from the bookmarklet/scraper.
-     * @param {string} urlFragment The hash string (e.g., "#171542389123")
      */
     async getSession(urlFragment) {
         await this.dbReady;
         
-        // Case 1: URL contains an ID (e.g. #171542389123)
-        // Strip the '#' and check if it is purely numeric
         const possibleId = urlFragment ? urlFragment.substring(1) : null;
         
         if (possibleId && /^\d+$/.test(possibleId)) {
             const historyEntry = await vizStore.getVisualization(possibleId);
             
             if (historyEntry) {
-                // Return data if we have it, regardless of whether analysis finished (savedState)
-                // This enables "Resuming" incomplete sessions.
                 return { 
                     data: historyEntry.allItems || null, 
                     context: historyEntry.context, 
@@ -40,7 +33,6 @@ export class HistoryManager {
             }
         }
 
-        // Case 2: New Analysis (Data waiting via PostMessage or user needs to use bookmarklet)
         return { data: null, context: null, savedState: null, historyEntry: null, waitingForData: true };
     }
 
@@ -49,13 +41,11 @@ export class HistoryManager {
      */
     waitForData() {
         return new Promise((resolve, reject) => {
-            // Send a signal that we are ready
             if (window.opener) {
                 window.opener.postMessage({ type: 'postscope-ready' }, '*');
             }
 
             const handler = (event) => {
-                // Security check could be added here (origin check), but Postscope is client-side.
                 if (event.data && event.data.type === 'postscope-data') {
                     window.removeEventListener('message', handler);
                     
@@ -69,6 +59,7 @@ export class HistoryManager {
                                 likes: parseInt(row.likes || '0', 10),
                                 timestamp: row.timestamp || null,
                                 url: row.url || null,
+                                profilePic: row.profilePic || null, // Capture profile picture URL
                                 originalText: row.text || ''
                             }))
                             .filter(item => item.content);
@@ -92,7 +83,6 @@ export class HistoryManager {
 
     /**
      * SAVES RAW DATA IMMEDIATELY.
-     * This creates a history entry before analysis starts, preventing data loss.
      */
     async createInitialHistoryEntry(context, allItems) {
         const id = Date.now();
@@ -100,11 +90,11 @@ export class HistoryManager {
         let name = 'Untitled Visualization';
         if (context) {
             const truncatedName = truncate(context.name, 40);
-            if (truncatedName) { // Prioritize scraped name for Lists/Communities
+            if (truncatedName) {
                 if (context.type === 'list') name = `List: ${truncatedName}`;
                 else if (context.type === 'communities') name = `Community: ${truncatedName}`;
                 else name = truncatedName;
-            } else { // Fallback to type-based names
+            } else {
                 switch (context.type) {
                     case 'post': name = `Replies to @${truncate(context.author, 30)}`; break;
                     case 'profile': name = `Profile: @${truncate(context.author, 30)} (${context.subpage || 'tweets'})`; break;
@@ -133,8 +123,8 @@ export class HistoryManager {
             name: name,
             context: context || { type: 'unknown' },
             postCount: allItems.length,
-            savedState: null, // Analysis hasn't run yet
-            allItems: allItems // Store raw data
+            savedState: null,
+            allItems: allItems
         };
 
         await vizStore.saveVisualization(newEntry);
