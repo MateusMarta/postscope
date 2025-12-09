@@ -406,8 +406,8 @@ export class EmbeddingVisualizer {
             type: "Feature", geometry: { type: "Point", coordinates: [coords[0], coords[1]] }, properties: { text }
         }]});
         
-        // Pan to query point
-        this.map.flyTo({ center: [coords[0], coords[1]], zoom: 5 });
+        // Removed flyTo to prevent view refresh when typing
+        // this.map.flyTo({ center: [coords[0], coords[1]], zoom: 5 });
     }
 
     highlightPoint(coords) {
