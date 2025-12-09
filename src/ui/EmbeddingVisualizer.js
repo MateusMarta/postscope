@@ -406,8 +406,17 @@ export class EmbeddingVisualizer {
             type: "Feature", geometry: { type: "Point", coordinates: [coords[0], coords[1]] }, properties: { text }
         }]});
         
-        // Removed flyTo to prevent view refresh when typing
-        // this.map.flyTo({ center: [coords[0], coords[1]], zoom: 5 });
+    }
+
+    focusOnLocation(coords) {
+        if (!this.map.isStyleLoaded() || !coords) return;
+        this.map.flyTo({ 
+            center: [coords[0], coords[1]], 
+            zoom: 6.5, 
+            speed: 2.5,
+            curve: 1,
+            essential: true 
+        });
     }
 
     highlightPoint(coords) {
@@ -432,7 +441,13 @@ export class EmbeddingVisualizer {
             }]
         });
         
-        this.map.flyTo({ center: coords, zoom: Math.max(this.map.getZoom(), 4) });
+        this.map.flyTo({ 
+            center: coords, 
+            zoom: 6.5,
+            speed: 2.5,
+            curve: 1,
+            essential: true 
+        });
     }
 
     togglePointLabels() {

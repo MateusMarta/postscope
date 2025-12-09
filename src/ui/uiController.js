@@ -2,8 +2,8 @@ function debounce(func, delay) { let timeout; return function(...args) { const c
 const truncate = (str, maxLength) => { if (!str || str.length <= maxLength) return str; return str.substring(0, maxLength) + '...'; };
 
 export class UIController {
-    constructor({ onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, getMapInstance, onPostSelect, onTimeRangeChange }) {
-        this.callbacks = { onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, onPostSelect, onTimeRangeChange };
+    constructor({ onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, getMapInstance, onPostSelect, onTimeRangeChange, onFocusQuery }) {
+        this.callbacks = { onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, onPostSelect, onTimeRangeChange, onFocusQuery };
         
         this.minClusterSizeEl = document.getElementById('min-cluster-size');
         this.reclusterButton = document.getElementById('recluster-button');
@@ -19,6 +19,7 @@ export class UIController {
         this.visualizationPanel = document.querySelector('.visualization-panel');
         this.verticalResizer = document.getElementById('vertical-resizer');
         this.queryContainer = document.getElementById('query-container');
+        this.focusQueryBtn = document.getElementById('focus-query-btn');
         
         // New Timeline Elements
         this.timelineControls = document.getElementById('timeline-controls');
@@ -55,8 +56,19 @@ export class UIController {
     _attachEventListeners() {
         this.reclusterButton.addEventListener('click', () => this.callbacks.onRecluster());
         this.toggleLabelsButton.addEventListener('click', () => this.callbacks.onToggleLabels());
-        this.queryInput.addEventListener('input', debounce((e) => this.callbacks.onQuery(e.target.value.trim()), 300));
         this.minClusterSizeEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); this.callbacks.onRecluster(); } });
+
+        // Updated Query Input Listener
+        this.queryInput.addEventListener('input', debounce((e) => {
+            const val = e.target.value.trim();
+            this.callbacks.onQuery(val);
+            this._updateFocusButtonState(val.length > 0);
+        }, 300));
+
+        // New Focus Button Listener
+        this.focusQueryBtn.addEventListener('click', () => {
+             if (this.callbacks.onFocusQuery) this.callbacks.onFocusQuery();
+        });
 
         // --- Custom Timeline Interaction Logic ---
         if (this.timelineBrushContainer) {
@@ -105,6 +117,16 @@ export class UIController {
                 document.body.style.cursor = 'row-resize'; document.body.style.userSelect = 'none';
                 document.addEventListener('mousemove', doDrag); document.addEventListener('mouseup', stopDrag);
             });
+        }
+    }
+
+    _updateFocusButtonState(hasText) {
+        if (hasText) {
+            this.focusQueryBtn.classList.remove('opacity-0', 'pointer-events-none');
+            this.focusQueryBtn.classList.add('opacity-100', 'pointer-events-auto');
+        } else {
+            this.focusQueryBtn.classList.remove('opacity-100', 'pointer-events-auto');
+            this.focusQueryBtn.classList.add('opacity-0', 'pointer-events-none');
         }
     }
 

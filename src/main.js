@@ -15,6 +15,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Store the ID of the current session to update state later
     let currentSessionId = null;
 
+    // Store the current query coordinates here
+    let currentQueryCoords = null;
+
     const saveCurrentState = () => {
         if (!currentSessionId) return;
         historyManager.updateState(currentSessionId, appState.getSerializableState());
@@ -50,7 +53,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         },
         onQuery: async (text) => {
             const coords = await analysisPipeline.transformSingle(text, appState.getAllItems(), appState.getData2D());
+            currentQueryCoords = coords; // Store coords
             visualizer.updateQueryPoint(text, coords);
+        },
+        onFocusQuery: () => {
+            if (currentQueryCoords) {
+                visualizer.focusOnLocation(currentQueryCoords);
+            }
         },
         onTitleChange: (newName) => {
             appState.setVisualizationName(newName);
