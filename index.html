@@ -316,16 +316,17 @@
                         if (!article) continue;
                         
                         const adMarker = Array.from(article.querySelectorAll('span')).find(span => span.innerText.trim() === 'Ad');
-                        if (adMarker) { continue; }
+						if (adMarker) { continue; }
+						
+						const tweetTextElement = article.querySelector('[data-testid="tweetText"]');
+						const authorHandle = article.querySelector('div[data-testid="User-Name"] a[href^="/"]')?.href.split('/').pop();
+						const likeButton = article.querySelector('[data-testid="like"]') || article.querySelector('[data-testid="unlike"]');
+						const likeAriaLabel = likeButton?.getAttribute('aria-label') || '0';
+						const likeMatch = likeAriaLabel.match(/(\d[\d,]*)/);
+						const likes = likeMatch ? parseInt(likeMatch[1].replace(/,/g, ''), 10) : 0;
+						const timeElement = article.querySelector('time[datetime]');
+						const postTimestamp = timeElement ? timeElement.getAttribute('datetime') : '';
 
-                        const tweetTextElement = article.querySelector('[data-testid="tweetText"]');
-                        const authorHandle = article.querySelector('div[data-testid="User-Name"] a[href^="/"]')?.href.split('/').pop();
-                        const likeAriaLabel = article.querySelector('[data-testid="like"]')?.getAttribute('aria-label') || '0';
-                        const likeMatch = likeAriaLabel.match(/(\d[\d,]*)/);
-                        const likes = likeMatch ? parseInt(likeMatch[1].replace(/,/g, ''), 10) : 0;
-                        const timeElement = article.querySelector('time[datetime]');
-                        const postTimestamp = timeElement ? timeElement.getAttribute('datetime') : '';
-                        
                         // Capture Profile Picture
                         const avatarImg = article.querySelector('div[data-testid="Tweet-User-Avatar"] img');
                         const profilePic = avatarImg ? avatarImg.src : '';
