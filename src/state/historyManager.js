@@ -1,4 +1,5 @@
 import { vizStore } from '../services/visualizationStore.js';
+import { profilePicCache } from '../services/ProfilePicCache.js';
 import Papa from 'papaparse';
 
 // Helper function to truncate long strings
@@ -17,18 +18,28 @@ export class HistoryManager {
      */
     async getSession(urlFragment) {
         await this.dbReady;
-        
+
         const possibleId = urlFragment ? urlFragment.substring(1) : null;
-        
+
         if (possibleId && /^\d+$/.test(possibleId)) {
             const historyEntry = await vizStore.getVisualization(possibleId);
-            
+
             if (historyEntry) {
-                return { 
-                    data: historyEntry.allItems || null, 
-                    context: historyEntry.context, 
-                    savedState: historyEntry.savedState || null, 
-                    historyEntry 
+                // Attempt to backfill cache if historical entry has data
+                if (historyEntry.allItems) {
+                    const historicalTimestamp = historyEntry.timestamp || Date.now();
+                    historyEntry.allItems.forEach(item => {
+                        if (item.author && item.profilePic) {
+                            profilePicCache.update(item.author, item.profilePic, historicalTimestamp);
+                        }
+                    });
+                }
+
+                return {
+                    data: historyEntry.allItems || null,
+                    context: historyEntry.context,
+                    savedState: historyEntry.savedState || null,
+                    historyEntry
                 };
             }
         }
@@ -48,14 +59,14 @@ export class HistoryManager {
             const handler = (event) => {
                 if (event.data && event.data.type === 'postscope-data') {
                     window.removeEventListener('message', handler);
-                    
+
                     const { csvData, context } = event.data;
                     try {
                         const parsed = Papa.parse(csvData, { header: true, skipEmptyLines: true });
                         const data = parsed.data
-                            .map(row => ({ 
-                                author: row.author || 'unknown', 
-                                content: row.text || '', 
+                            .map(row => ({
+                                author: row.author || 'unknown',
+                                content: row.text || '',
                                 likes: parseInt(row.likes || '0', 10),
                                 timestamp: row.timestamp || null,
                                 url: row.url || null,
@@ -63,16 +74,30 @@ export class HistoryManager {
                                 originalText: row.text || ''
                             }))
                             .filter(item => item.content);
-                        
+
+                        // Cache profile pictures
+                        const retrievalTimestamp = Date.now();
+                        const uniqueAuthors = new Map();
+                        data.forEach(item => {
+                            if (item.author && item.profilePic) {
+                                uniqueAuthors.set(item.author, item.profilePic);
+                            }
+                        });
+
+                        // Fire and forget cache updates
+                        uniqueAuthors.forEach((url, author) => {
+                            profilePicCache.update(author, url, retrievalTimestamp);
+                        });
+
                         resolve({ data, context });
                     } catch (e) {
                         reject(e);
                     }
                 }
             };
-            
+
             window.addEventListener('message', handler);
-            
+
             // Timeout after 30 seconds if nothing arrives
             setTimeout(() => {
                 window.removeEventListener('message', handler);
@@ -86,7 +111,7 @@ export class HistoryManager {
      */
     async createInitialHistoryEntry(context, allItems) {
         const id = Date.now();
-        
+
         let name = 'Untitled Visualization';
         if (context) {
             const truncatedName = truncate(context.name, 40);
@@ -107,7 +132,7 @@ export class HistoryManager {
                     case 'profile_communities_explore': name = `Explore Communities for @${truncate(context.author, 30)}`; break;
                     case 'search':
                         const filterMap = { live: 'Latest', user: 'People', image: 'Media' };
-                        let filterName = 'Top'; 
+                        let filterName = 'Top';
                         if (context.filter) { filterName = filterMap[context.filter] || context.filter; }
                         const truncatedQuery = truncate(context.query, 40);
                         name = `Search: "${truncatedQuery}" (${filterName})`;

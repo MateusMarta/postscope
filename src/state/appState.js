@@ -9,7 +9,7 @@ export class AppState {
 
         this.currentLabels = [];
         this.currentMinClusterSize = 5;
-        
+
         // Date range state
         this.globalMinDate = 0;
         this.globalMaxDate = 0;
@@ -21,14 +21,11 @@ export class AppState {
 
         // Stores customizations across different cluster size settings
         this.allSettingsCustomizations = new Map();
-        
+
         // For the *current* clustering, maps a label to a persistent customization ID
         this.labelToCustIdMap = new Map();
-        
-        this.nextCustomizationId = 0;
 
-        // Map of author handle -> { url, timestamp }
-        this.authorProfilePics = new Map();
+        this.nextCustomizationId = 0;
     }
 
     // --- GETTERS ---
@@ -43,9 +40,8 @@ export class AppState {
     getCustomizationsForCurrentSize = () => this.allSettingsCustomizations.get(this.currentMinClusterSize) || new Map();
     getLabelToCustIdMap = () => this.labelToCustIdMap;
     getUniqueClusterCount = () => new Set(this.currentLabels.filter(l => l !== -1)).size;
-    getAuthorProfilePics = () => this.authorProfilePics;
     hasClusteringForSize = (size) => this.clusteringDataByMinSize.has(size);
-    
+
     getTimeRange = () => ({
         globalMin: this.globalMinDate,
         globalMax: this.globalMaxDate,
@@ -67,8 +63,6 @@ export class AppState {
         this.embeddings = embeddings;
         this.data10D = data10D;
         this.data2D = data2D;
-
-        this._recalculateProfilePics();
 
         // Calculate global date range
         let minTime = Infinity;
@@ -99,22 +93,6 @@ export class AppState {
         }
     }
 
-    _recalculateProfilePics() {
-        this.authorProfilePics.clear();
-        this.allItems.forEach(item => {
-            if (item.profilePic && item.author) {
-                const current = this.authorProfilePics.get(item.author);
-                // Use item timestamp if available, otherwise consider it 'now' or strict comparison depends on data
-                // If item has no timestamp, we treat it as old, or just overwrite if missing
-                const itemTime = item.timestamp ? new Date(item.timestamp).getTime() : 0;
-                
-                if (!current || itemTime >= current.timestamp) {
-                    this.authorProfilePics.set(item.author, { url: item.profilePic, timestamp: itemTime });
-                }
-            }
-        });
-    }
-
     /**
      * Calculates histogram bins for the timeline.
      * @param {number} binCount Number of bars in the histogram
@@ -135,11 +113,11 @@ export class AppState {
 
             // Calculate bin index
             let i = Math.floor(((t - this.globalMinDate) / range) * binCount);
-            
+
             // Clamp to last bin if exactly on max date
             i = Math.min(i, binCount - 1);
             i = Math.max(i, 0); // Safety check
-            
+
             bins[i]++;
         });
 
@@ -173,9 +151,9 @@ export class AppState {
             if (item.timestamp) {
                 itemTime = new Date(item.timestamp).getTime();
             }
-            
+
             const isValidTime = !isNaN(itemTime) && itemTime > 0;
-            
+
             if (isValidTime) {
                 if (itemTime >= this.currentStartDate && itemTime <= this.currentEndDate) {
                     items.push(item);
@@ -206,9 +184,9 @@ export class AppState {
 
     updateClusteringResults(newLabels, newMinSize) {
         const oldCustomizations = this.allSettingsCustomizations.get(this.currentMinClusterSize) || new Map();
-        
+
         const { newCustomizations, newLabelToCustId } = this._matchAndCarryOverCustomizations(newLabels, oldCustomizations);
-        
+
         this.allSettingsCustomizations.set(newMinSize, newCustomizations);
         this.labelToCustIdMap = newLabelToCustId;
         this.currentLabels = newLabels;
@@ -232,9 +210,9 @@ export class AppState {
         const newLabelToCustId = new Map();
 
         if (sourceCustomizations.size === 0 || newClusters.size === 0) {
-             return { newCustomizations, newLabelToCustId };
+            return { newCustomizations, newLabelToCustId };
         }
-        
+
         const potentialMatches = [];
         for (const [newLabel, newMembers] of newClusters.entries()) {
             for (const [oldCustId, oldCustData] of sourceCustomizations.entries()) {
@@ -270,19 +248,19 @@ export class AppState {
         if (!this.allSettingsCustomizations.has(this.currentMinClusterSize)) {
             this.allSettingsCustomizations.set(this.currentMinClusterSize, customizations);
         }
-        
+
         let custId = this.labelToCustIdMap.get(label);
         if (custId === undefined) {
             custId = this.nextCustomizationId++;
             this.labelToCustIdMap.set(label, custId);
             const memberIndices = new Set(this.currentLabels.map((l, i) => l === label ? i : -1).filter(i => i !== -1));
-            const uniqueLabels = [...new Set(this.currentLabels)].filter(l => l !== -1).sort((a,b)=>a-b);
+            const uniqueLabels = [...new Set(this.currentLabels)].filter(l => l !== -1).sort((a, b) => a - b);
             const defaultName = `Cluster ${uniqueLabels.indexOf(label) + 1}`;
             customizations.set(custId, { name: defaultName, visible: false, memberIndices });
         }
         return custId;
     }
-    
+
     setClusterName(label, newName) {
         const custId = this._ensureCustomizationExists(label);
         const customization = this.getCustomizationsForCurrentSize().get(custId);
@@ -299,7 +277,7 @@ export class AppState {
     getSerializableState() {
         const serializableCustomizations = Array.from(this.allSettingsCustomizations.entries()).map(([size, custMap]) => [
             size,
-            Array.from(custMap.entries()).map(([id, custData]) => [id, {...custData, memberIndices: Array.from(custData.memberIndices)}])
+            Array.from(custMap.entries()).map(([id, custData]) => [id, { ...custData, memberIndices: Array.from(custData.memberIndices) }])
         ]);
 
         const serializableClusteringData = Array.from(this.clusteringDataByMinSize.entries()).map(([size, data]) => [
@@ -330,10 +308,7 @@ export class AppState {
     setFullState(state) {
         this.visualizationName = state.visualizationName || "Untitled Visualization";
         this.allItems = state.allItems || [];
-        this.arePointLabelsVisible = state.arePointLabelsVisible ?? true; 
-
-        // Reconstruct profile pic map from loaded items
-        this._recalculateProfilePics();
+        this.arePointLabelsVisible = state.arePointLabelsVisible ?? true;
 
         const loadedEmbeddings = state.embeddings || [];
         if (loadedEmbeddings.length > 0 && !Array.isArray(loadedEmbeddings[0]) && typeof loadedEmbeddings[0] === 'object') {

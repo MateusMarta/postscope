@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import { profilePicCache } from '../services/ProfilePicCache.js';
 
 export class EmbeddingVisualizer {
     constructor({ containerId }) {
@@ -21,11 +22,11 @@ export class EmbeddingVisualizer {
             center: [0, 0],
             zoom: 1
         });
-        
+
         this.map.on('load', () => {
             this._updateMapTheme(); // Set initial theme for background
             this._setupInitialLayers();
-            
+
             // Handle clicking on a point to open the post
             this.map.on('click', 'points-circles', (e) => {
                 if (e.features?.[0]?.properties?.url) {
@@ -44,7 +45,7 @@ export class EmbeddingVisualizer {
                 this._removePopup();
             });
         });
-        
+
         // Listen for theme changes to update the map style
         window.addEventListener('themechange', this._updateMapTheme.bind(this));
     }
@@ -54,7 +55,7 @@ export class EmbeddingVisualizer {
 
         this.isDarkTheme = document.documentElement.classList.contains('dark');
         const bgColor = this.isDarkTheme ? '#1e293b' : '#f1f5f9'; // slate-800 : slate-100
-        
+
         if (this.map.getLayer('background')) {
             this.map.setPaintProperty('background', 'background-color', bgColor);
         } else {
@@ -74,7 +75,7 @@ export class EmbeddingVisualizer {
             this.map.setPaintProperty('point-labels', 'text-halo-color', pointLabelHaloColor);
         }
         if (this.map.getLayer('cluster-name-labels')) {
-             this.map.setPaintProperty('cluster-name-labels', 'text-halo-color', this.isDarkTheme ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)'); // slate-800 : white
+            this.map.setPaintProperty('cluster-name-labels', 'text-halo-color', this.isDarkTheme ? 'rgba(30, 41, 59, 0.9)' : 'rgba(255, 255, 255, 0.9)'); // slate-800 : white
         }
         if (this.map.getLayer('query-point-circle')) {
             const queryPointColor = this.isDarkTheme ? '#f8fafc' : '#0f172a'; // slate-50 : slate-900
@@ -106,9 +107,24 @@ export class EmbeddingVisualizer {
 
         // Default placeholder if no profile pic
         let avatarHtml = `<div class="popup-avatar-placeholder">${properties.author.charAt(0).toUpperCase()}</div>`;
-        if (properties.profile_pic) {
-            avatarHtml = `<img src="${properties.profile_pic}" class="popup-avatar" alt="${properties.author}" onerror="this.style.display='none'"/>`;
-        }
+        // We will try to load the image asynchronously
+        avatarHtml += `<img class="popup-avatar" alt="${properties.author}" style="display:none" />`;
+
+        // Fetch blob URL
+        profilePicCache.getBlobUrl(properties.author).then(url => {
+            if (url && this.popup) {
+                const el = this.popup.getElement();
+                if (el) {
+                    const img = el.querySelector('.popup-avatar');
+                    const placeholder = el.querySelector('.popup-avatar-placeholder');
+                    if (img && placeholder) {
+                        img.src = url;
+                        img.style.display = 'block';
+                        placeholder.style.display = 'none';
+                    }
+                }
+            }
+        });
 
         const popupContent = `
             <div class="post-popup-content">
@@ -127,7 +143,7 @@ export class EmbeddingVisualizer {
                 </div>
             </div>
         `;
-        
+
         this.popup = new maplibregl.Popup({
             closeButton: false,
             closeOnClick: false,
@@ -135,11 +151,11 @@ export class EmbeddingVisualizer {
             maxWidth: '320px',
             offset: 15
         })
-        .setLngLat(coordinates)
-        .setHTML(popupContent)
-        .addTo(this.map);
+            .setLngLat(coordinates)
+            .setHTML(popupContent)
+            .addTo(this.map);
     }
-    
+
     _removePopup() {
         if (this.popup) {
             this.popup.remove();
@@ -152,7 +168,7 @@ export class EmbeddingVisualizer {
         this.map.addSource('query-point', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         this.map.addSource('cluster-names', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
         this.map.addSource('highlight-point', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-        
+
         const pointLabelTextColor = this.isDarkTheme ? '#e2e8f0' : '#0f172a'; // slate-200 : slate-900
         const pointLabelHaloColor = this.isDarkTheme ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)'; // slate-950 : white
 
@@ -173,7 +189,7 @@ export class EmbeddingVisualizer {
             },
             paint: { 'text-color': pointLabelTextColor, 'text-halo-color': pointLabelHaloColor, 'text-halo-width': 1 }
         });
-        
+
         this.map.addLayer({
             id: 'cluster-name-labels', type: 'symbol', source: 'cluster-names',
             layout: { 'text-field': ['get', 'name'], 'text-size': 16, 'text-font': ["Noto Sans Bold"], 'text-allow-overlap': true, 'text-ignore-placement': true },
@@ -189,7 +205,7 @@ export class EmbeddingVisualizer {
                 'circle-stroke-color': '#0ea5e9' // sky-500
             }
         });
-        
+
         const queryPointColor = this.isDarkTheme ? '#f8fafc' : '#0f172a'; // slate-50 : slate-900
         const queryPointStroke = this.isDarkTheme ? '#1e293b' : '#ffffff'; // slate-800 : white
         const queryLabelColor = this.isDarkTheme ? '#f8fafc' : '#0f172a';
@@ -199,7 +215,7 @@ export class EmbeddingVisualizer {
             id: 'query-point-circle', type: 'circle', source: 'query-point',
             paint: { 'circle-radius': 10, 'circle-color': queryPointColor, 'circle-stroke-width': 3, 'circle-stroke-color': queryPointStroke }
         });
-        
+
         this.map.addLayer({
             id: 'query-point-label', type: 'symbol', source: 'query-point',
             layout: { 'text-field': ['get', 'text'], 'text-variable-anchor': ['top', 'bottom', 'left', 'right'], 'text-radial-offset': 1.2, 'text-size': 14, 'text-font': ["Noto Sans Bold"] },
@@ -226,7 +242,7 @@ export class EmbeddingVisualizer {
         colorScale.push(this.isDarkTheme ? '#e2e8f0' : '#0f172a'); // Fallback
         return colorScale;
     }
-    
+
     _updateClusterNameLayer(twoDimCoords, labels, customizations, labelToCustIdMap) {
         const nameFeatures = [];
         const uniqueLabels = [...new Set(labels)].filter(l => l !== -1).sort((a, b) => a - b);
@@ -257,72 +273,73 @@ export class EmbeddingVisualizer {
         this.map.getSource('cluster-names').setData({ type: 'FeatureCollection', features: nameFeatures });
     }
 
-    _loadAuthorImages(authors, authorProfilePicsMap) {
-        authors.forEach(author => {
+    async _loadAuthorImages(authors) {
+        for (const author of authors) {
             if (!this.loadedImages.has(author)) {
                 this.loadedImages.add(author); // Mark as requested to avoid duplicate calls
-                
-                const data = authorProfilePicsMap.get(author);
-                if (data && data.url) {
-                    const img = new Image();
-                    img.crossOrigin = "Anonymous";
-                    img.src = data.url;
-                    img.onload = () => {
-                        // Create a circular crop of the profile picture
-                        const canvas = document.createElement('canvas');
-                        const size = 64; // Standard size for texture
-                        canvas.width = size;
-                        canvas.height = size;
-                        const ctx = canvas.getContext('2d');
-                        
-                        ctx.beginPath();
-                        ctx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
-                        ctx.closePath();
-                        ctx.clip();
-                        
-                        ctx.drawImage(img, 0, 0, size, size);
-                        
-                        if (!this.map.hasImage(author)) {
-                            this.map.addImage(author, ctx.getImageData(0, 0, size, size));
-                        }
-                    };
-                    img.onerror = () => {
-                        console.warn(`Failed to load profile pic for ${author}`);
-                    };
+
+                try {
+                    const blobUrl = await profilePicCache.getBlobUrl(author);
+                    if (blobUrl) {
+                        const img = new Image();
+                        img.crossOrigin = "Anonymous";
+                        img.src = blobUrl;
+                        img.onload = () => {
+                            // Create a circular crop of the profile picture
+                            const canvas = document.createElement('canvas');
+                            const size = 64; // Standard size for texture
+                            canvas.width = size;
+                            canvas.height = size;
+                            const ctx = canvas.getContext('2d');
+
+                            ctx.beginPath();
+                            ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+                            ctx.closePath();
+                            ctx.clip();
+
+                            ctx.drawImage(img, 0, 0, size, size);
+
+                            if (!this.map.hasImage(author)) {
+                                this.map.addImage(author, ctx.getImageData(0, 0, size, size));
+                            }
+                        };
+                    }
+                } catch (e) {
+                    // console.warn(`Failed to load profile pic for ${author}`, e);
                 }
             }
-        });
+        }
     }
 
-    render(pointsData, twoDimCoords, labels, customizations, labelToCustIdMap, areLabelsVisible, authorProfilePicsMap, shouldFitBounds = false) {
+    render(pointsData, twoDimCoords, labels, customizations, labelToCustIdMap, areLabelsVisible, shouldFitBounds = false) {
         if (!this.map.isStyleLoaded() || twoDimCoords.length === 0) {
             this.map.once('load', () => this.render(...arguments));
             return;
         }
 
         const uniqueAuthors = new Set(pointsData.map(p => p.author));
-        if (authorProfilePicsMap) {
-            this._loadAuthorImages(uniqueAuthors, authorProfilePicsMap);
-        }
+        this._loadAuthorImages(uniqueAuthors);
 
-        const geojson = { type: "FeatureCollection", features: pointsData.map((point, i) => ({
-            type: "Feature", geometry: { type: "Point", coordinates: [twoDimCoords[i][0], twoDimCoords[i][1]] },
-            properties: { 
-                text: point.content, 
-                author: point.author,
-                timestamp: point.timestamp,
-                likes: point.likes || 0,
-                url: point.url,
-                cluster_label: labels[i],
-                profile_pic: point.profilePic // Pass explicit profile pic url for popups
-            }
-        }))};
+        const geojson = {
+            type: "FeatureCollection", features: pointsData.map((point, i) => ({
+                type: "Feature", geometry: { type: "Point", coordinates: [twoDimCoords[i][0], twoDimCoords[i][1]] },
+                properties: {
+                    text: point.content,
+                    author: point.author,
+                    timestamp: point.timestamp,
+                    likes: point.likes || 0,
+                    url: point.url,
+                    cluster_label: labels[i],
+                    // profile_pic: point.profilePic // Legacy, removed
+                }
+            }))
+        };
         this.map.getSource('points').setData(geojson);
-        
+
         // Remove layers to refresh order if needed, but here we just ensure they exist
         if (this.map.getLayer('points-circles')) this.map.removeLayer('points-circles');
         if (this.map.getLayer('points-icons')) this.map.removeLayer('points-icons');
-        
+
         // LOGIC:
         // Base radius logic remains.
         // Requested: "Make profile picture just 10% larger".
@@ -334,9 +351,9 @@ export class EmbeddingVisualizer {
         // 2. Adjust the Icon Scale subtraction to create a 4px gap (ring) instead of 2px.
 
         const baseRadius = ['+', 6, ['*', 3, ['log10', ['+', 1, ['coalesce', ['get', 'likes'], 0]]]]];
-        
+
         // Scale radius up by 1.15 (15%) to accommodate larger image + thicker ring
-        const radiusExpression = ['*', baseRadius, 1.15]; 
+        const radiusExpression = ['*', baseRadius, 1.15];
 
         // 1. The colored ring (Background Circle)
         this.map.addLayer({
@@ -368,11 +385,11 @@ export class EmbeddingVisualizer {
                 'icon-opacity': 1
             }
         }, 'point-labels'); // Place below labels but above circles
-        
+
         if (this.map.getLayer('point-labels')) {
             this.map.setLayoutProperty('point-labels', 'visibility', areLabelsVisible ? 'visible' : 'none');
         }
-        
+
         if (customizations && labelToCustIdMap) {
             this._updateClusterNameLayer(twoDimCoords, labels, customizations, labelToCustIdMap);
         } else {
@@ -383,7 +400,7 @@ export class EmbeddingVisualizer {
         if (shouldFitBounds) {
             const bounds = new maplibregl.LngLatBounds();
             twoDimCoords.forEach(coord => bounds.extend(coord));
-            
+
             this.map.resize();
             if (!bounds.isEmpty()) {
                 this.map.fitBounds(bounds, { padding: 50, maxZoom: 8, duration: 1000 }); // Added duration
@@ -402,20 +419,22 @@ export class EmbeddingVisualizer {
             source.setData({ type: 'FeatureCollection', features: [] });
             return;
         }
-        source.setData({ type: "FeatureCollection", features: [{
-            type: "Feature", geometry: { type: "Point", coordinates: [coords[0], coords[1]] }, properties: { text }
-        }]});
-        
+        source.setData({
+            type: "FeatureCollection", features: [{
+                type: "Feature", geometry: { type: "Point", coordinates: [coords[0], coords[1]] }, properties: { text }
+            }]
+        });
+
     }
 
     focusOnLocation(coords) {
         if (!this.map.isStyleLoaded() || !coords) return;
-        this.map.flyTo({ 
-            center: [coords[0], coords[1]], 
-            zoom: 6.5, 
+        this.map.flyTo({
+            center: [coords[0], coords[1]],
+            zoom: 6.5,
             speed: 2.5,
             curve: 1,
-            essential: true 
+            essential: true
         });
     }
 
@@ -431,7 +450,7 @@ export class EmbeddingVisualizer {
             source.setData({ type: 'FeatureCollection', features: [] });
             return;
         }
-        
+
         source.setData({
             type: "FeatureCollection",
             features: [{
@@ -440,13 +459,13 @@ export class EmbeddingVisualizer {
                 properties: {}
             }]
         });
-        
-        this.map.flyTo({ 
-            center: coords, 
+
+        this.map.flyTo({
+            center: coords,
             zoom: 6.5,
             speed: 2.5,
             curve: 1,
-            essential: true 
+            essential: true
         });
     }
 

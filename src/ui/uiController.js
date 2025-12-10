@@ -1,10 +1,11 @@
-function debounce(func, delay) { let timeout; return function(...args) { const context = this; clearTimeout(timeout); timeout = setTimeout(() => func.apply(context, args), delay); }; }
+function debounce(func, delay) { let timeout; return function (...args) { const context = this; clearTimeout(timeout); timeout = setTimeout(() => func.apply(context, args), delay); }; }
 const truncate = (str, maxLength) => { if (!str || str.length <= maxLength) return str; return str.substring(0, maxLength) + '...'; };
+import { profilePicCache } from '../services/ProfilePicCache.js';
 
 export class UIController {
     constructor({ onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, getMapInstance, onPostSelect, onTimeRangeChange, onFocusQuery }) {
         this.callbacks = { onRecluster, onQuery, onNameChange, onVisibilityChange, onToggleLabels, onTitleChange, onPostSelect, onTimeRangeChange, onFocusQuery };
-        
+
         this.minClusterSizeEl = document.getElementById('min-cluster-size');
         this.reclusterButton = document.getElementById('recluster-button');
         this.toggleLabelsButton = document.getElementById('toggle-labels-button');
@@ -20,7 +21,7 @@ export class UIController {
         this.verticalResizer = document.getElementById('vertical-resizer');
         this.queryContainer = document.getElementById('query-container');
         this.focusQueryBtn = document.getElementById('focus-query-btn');
-        
+
         // New Timeline Elements
         this.timelineControls = document.getElementById('timeline-controls');
         this.timelineBrushContainer = document.getElementById('timeline-brush-container');
@@ -43,7 +44,7 @@ export class UIController {
         this.currentRightPercent = 100;
 
         this._attachEventListeners();
-        
+
         const mapReadyInterval = setInterval(() => {
             const map = getMapInstance();
             if (map && map.isStyleLoaded()) {
@@ -67,7 +68,7 @@ export class UIController {
 
         // New Focus Button Listener
         this.focusQueryBtn.addEventListener('click', () => {
-             if (this.callbacks.onFocusQuery) this.callbacks.onFocusQuery();
+            if (this.callbacks.onFocusQuery) this.callbacks.onFocusQuery();
         });
 
         // --- Custom Timeline Interaction Logic ---
@@ -78,7 +79,7 @@ export class UIController {
         }
 
         this.responseListContainer.addEventListener('click', (e) => {
-             // ... (same list logic) ...
+            // ... (same list logic) ...
             const responseItem = e.target.closest('.response-item');
             if (!responseItem || !responseItem.dataset.originalIndex) return;
 
@@ -105,8 +106,8 @@ export class UIController {
                 const doDrag = (moveEvent) => {
                     moveEvent.preventDefault();
                     let newHeight = startHeight - (moveEvent.clientY - startY);
-                    const minHeight = 80; 
-                    const maxHeight = panel.offsetHeight * 0.7; 
+                    const minHeight = 80;
+                    const maxHeight = panel.offsetHeight * 0.7;
                     newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
                     this.queryContainer.style.height = `${newHeight}px`;
                 };
@@ -142,7 +143,7 @@ export class UIController {
 
         this.isDragging = true;
         this.dragStartX = e.clientX;
-        
+
         // Snap current visual state to dragging variables
         this.dragStartLeft = this.currentLeftPercent;
         this.dragStartRight = this.currentRightPercent;
@@ -161,16 +162,16 @@ export class UIController {
             const newRight = Math.min(100, newLeft + currentWidth);
             // Adjust left if right hit wall
             const finalLeft = Math.max(0, newRight - currentWidth);
-            
+
             this.currentLeftPercent = finalLeft;
             this.currentRightPercent = newRight;
             this.dragStartLeft = finalLeft;
             this.dragStartRight = newRight;
-            
+
             this._updateTimelineVisuals();
             this._emitTimeRangeChange();
         }
-        
+
         e.preventDefault(); // Prevent text selection
     }
 
@@ -207,7 +208,7 @@ export class UIController {
         this.isDragging = false;
         this._emitTimeRangeChange(); // Ensure final state is saved/rendered
     }
-    
+
     // Create the debouncer locally for the class instance
     _debouncedTimeEmit = debounce(() => this._emitTimeRangeChange(), 50);
 
@@ -217,7 +218,7 @@ export class UIController {
         const range = this.globalMaxTime - this.globalMinTime;
         const start = this.globalMinTime + (range * (this.currentLeftPercent / 100));
         const end = this.globalMinTime + (range * (this.currentRightPercent / 100));
-        
+
         this.callbacks.onTimeRangeChange(start, end);
     }
 
@@ -240,7 +241,7 @@ export class UIController {
         this.timelineStartLabel.textContent = this._formatDate(startTime);
         this.timelineEndLabel.textContent = this._formatDate(endTime);
     }
-    
+
     _renderHistogram(counts) {
         if (!this.timelineHistogram) return;
         const canvas = this.timelineHistogram;
@@ -249,17 +250,17 @@ export class UIController {
         const rect = canvas.getBoundingClientRect();
         canvas.width = rect.width * dpr;
         canvas.height = rect.height * dpr;
-        
+
         const w = canvas.width;
         const h = canvas.height;
         const max = Math.max(...counts, 1);
         const barWidth = w / counts.length;
-        
+
         ctx.clearRect(0, 0, w, h);
         const isDark = document.documentElement.classList.contains('dark');
         // Use a solid color, the opacity is handled by the canvas CSS class (0.4)
         ctx.fillStyle = isDark ? '#38bdf8' : '#0ea5e9'; // sky-400 : sky-500
-        
+
         counts.forEach((count, i) => {
             const barH = (count / max) * h;
             const x = i * barWidth;
@@ -290,21 +291,21 @@ export class UIController {
         const range = globalMax - globalMin;
         this.currentLeftPercent = ((currentStart - globalMin) / range) * 100;
         this.currentRightPercent = ((currentEnd - globalMin) / range) * 100;
-        
+
         // Clamp
         this.currentLeftPercent = Math.max(0, Math.min(100, this.currentLeftPercent));
         this.currentRightPercent = Math.max(0, Math.min(100, this.currentRightPercent));
 
         this._updateTimelineVisuals();
-        
+
         const histogramData = appState.getHistogramData(100); // 100 bins for smoother look
-        
-        if(this.timelineHistogram.clientWidth > 0) {
-             this._renderHistogram(histogramData);
+
+        if (this.timelineHistogram.clientWidth > 0) {
+            this._renderHistogram(histogramData);
         } else {
             requestAnimationFrame(() => this._renderHistogram(histogramData));
         }
-        
+
         window.addEventListener('themechange', () => this._renderHistogram(histogramData));
         window.addEventListener('resize', debounce(() => this._renderHistogram(histogramData), 200));
     }
@@ -316,7 +317,7 @@ export class UIController {
             this._deselectCluster();
         });
     }
-    
+
     showLoading(message) { this.statusArea.innerHTML = `<div class="info-banner">${message}</div>`; }
     hideLoading(message) { this.statusArea.innerHTML = `<div class="info-banner">${message}</div>`; }
     showError(message) { this.statusArea.innerHTML = `<div class="error-container"><p>${message}</p></div>`; this.disableControls(); this.reclusterButton.style.display = 'none'; }
@@ -365,9 +366,8 @@ export class UIController {
         const { items, coords, labels } = appState.getFilteredData();
         const customizations = appState.getCustomizationsForCurrentSize();
         const labelToCustIdMap = appState.getLabelToCustIdMap();
-        const authorProfilePics = appState.getAuthorProfilePics();
 
-        visualizer.render(items, coords, labels, customizations, labelToCustIdMap, appState.getArePointLabelsVisible(), authorProfilePics, shouldFitBounds);
+        visualizer.render(items, coords, labels, customizations, labelToCustIdMap, appState.getArePointLabelsVisible(), shouldFitBounds);
         this._renderClusterUI(items, labels, customizations, labelToCustIdMap, appState);
     }
     _renderClusterUI(items, labels, customizations, labelToCustIdMap, appState) {
@@ -375,20 +375,20 @@ export class UIController {
         this.clusterListContainer.innerHTML = '';
         if (previouslyActiveLabel === undefined) this._deselectCluster();
         const clusters = {};
-        items.forEach((item, i) => { 
-            const label = labels[i]; if (!clusters[label]) clusters[label] = []; 
+        items.forEach((item, i) => {
+            const label = labels[i]; if (!clusters[label]) clusters[label] = [];
             const globalIndex = appState.getAllItems().indexOf(item);
-            clusters[label].push({ ...item, globalIndex: globalIndex }); 
+            clusters[label].push({ ...item, globalIndex: globalIndex });
         });
         const sortedNumericLabels = Object.keys(clusters).map(l => parseInt(l, 10)).sort((a, b) => { if (a === -1) return 1; if (b === -1) return -1; return a - b; });
         const uniqueClusterLabels = sortedNumericLabels.filter(l => l !== -1);
         const isDark = document.documentElement.classList.contains('dark');
-        const getColorForCluster = (label) => { 
+        const getColorForCluster = (label) => {
             if (label == -1) return isDark ? '#475569' : '#d1d5db';
             const clusterIndex = uniqueClusterLabels.indexOf(label);
             const hue = (clusterIndex * (360 / (uniqueClusterLabels.length + 1))) % 360;
             const saturation = isDark ? 70 : 80; const lightness = isDark ? 60 : 50;
-            return `hsl(${hue}, ${saturation}%, ${lightness}%)`; 
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
         };
         const eyeIcon = `<span class="material-symbols-outlined">visibility</span>`;
         const eyeOffIcon = `<span class="material-symbols-outlined">visibility_off</span>`;
@@ -418,8 +418,8 @@ export class UIController {
             clusterItemEl.addEventListener('click', () => this._handleClusterSelection(label, clusters)); this.clusterListContainer.appendChild(clusterItemEl);
         }
         if (previouslyActiveLabel !== undefined) {
-             const activeEl = this.clusterListContainer.querySelector(`.cluster-item[data-label="${previouslyActiveLabel}"]`);
-             if (activeEl) { activeEl.classList.add('active'); if (clusters[previouslyActiveLabel]) { this._handleClusterSelection(parseInt(previouslyActiveLabel, 10), clusters, true); } else { this._deselectCluster(); } }
+            const activeEl = this.clusterListContainer.querySelector(`.cluster-item[data-label="${previouslyActiveLabel}"]`);
+            if (activeEl) { activeEl.classList.add('active'); if (clusters[previouslyActiveLabel]) { this._handleClusterSelection(parseInt(previouslyActiveLabel, 10), clusters, true); } else { this._deselectCluster(); } }
         }
     }
     _deselectCluster() {
@@ -429,22 +429,21 @@ export class UIController {
     }
     _handleClusterSelection(label, allClusters, isRerender = false) {
         const shouldResetScroll = !isRerender;
-        if (!isRerender) { const currentActive = this.clusterListContainer.querySelector('.cluster-item.active'); if(currentActive && currentActive.dataset.label == label) { this._deselectCluster(); return; } }
+        if (!isRerender) { const currentActive = this.clusterListContainer.querySelector('.cluster-item.active'); if (currentActive && currentActive.dataset.label == label) { this._deselectCluster(); return; } }
         this._deselectCluster(); this.responseListContainer.style.display = 'block';
         const selectedEl = this.clusterListContainer.querySelector(`.cluster-item[data-label="${label}"]`); if (selectedEl) selectedEl.classList.add('active');
         const detailView = document.createElement('div'); detailView.className = 'cluster-detail-view';
         const clusterItems = allClusters[label]; clusterItems.sort((a, b) => (b.likes || 0) - (a.likes || 0));
         clusterItems.forEach(item => {
             const itemDiv = document.createElement('div'); itemDiv.className = 'response-item'; itemDiv.dataset.originalIndex = item.globalIndex;
-            
+
             let timestampHtml = '';
             if (item.timestamp) { try { const date = new Date(item.timestamp); const formattedDate = date.toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); timestampHtml = `<span class="text-slate-500 dark:text-slate-400 text-xs ml-2">• ${formattedDate}</span>`; } catch (e) { console.warn("Could not parse timestamp:", item.timestamp, e); } }
-            
+
             // New Layout for Sidebar List
             let avatarHtml = `<div class="response-avatar-placeholder">${item.author.charAt(0).toUpperCase()}</div>`;
-            if (item.profilePic) {
-                avatarHtml = `<img src="${item.profilePic}" class="response-avatar" alt="${item.author}" onerror="this.style.display='none'"/>`;
-            }
+            // Async load placeholder
+            avatarHtml += `<img class="response-avatar" alt="${item.author}" style="display:none" />`;
 
             itemDiv.innerHTML = `
                 <div class="response-item-inner">
@@ -458,8 +457,21 @@ export class UIController {
                         <div class="mt-1">${item.content}</div>
                     </div>
                 </div>`;
-            
+
             detailView.appendChild(itemDiv);
+
+            // Load profile pic
+            profilePicCache.getBlobUrl(item.author).then(url => {
+                if (url) {
+                    const img = itemDiv.querySelector('.response-avatar');
+                    const placeholder = itemDiv.querySelector('.response-avatar-placeholder');
+                    if (img && placeholder) {
+                        img.src = url;
+                        img.style.display = 'block';
+                        placeholder.style.display = 'none';
+                    }
+                }
+            });
         });
         this.responseListContainer.appendChild(detailView);
         if (shouldResetScroll) this.responseListContainer.scrollTop = 0;

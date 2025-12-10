@@ -2,7 +2,7 @@ import { openDB } from 'idb';
 
 const DB_NAME = 'PostscopeDB';
 // Incremented version to trigger schema migration from urlFragment to ID
-const DB_VERSION = 2; 
+const DB_VERSION = 3;
 const STORE_NAME = 'visualizations';
 
 class VisualizationStore {
@@ -19,7 +19,7 @@ class VisualizationStore {
                     if (oldVersion < 2 && db.objectStoreNames.contains(STORE_NAME)) {
                         db.deleteObjectStore(STORE_NAME);
                     }
-                    
+
                     if (!db.objectStoreNames.contains(STORE_NAME)) {
                         // FIX: Use 'id' (timestamp/number) as keyPath.
                         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
@@ -39,12 +39,12 @@ class VisualizationStore {
         if (isNaN(numericId)) return null;
         return db.get(STORE_NAME, numericId);
     }
-    
+
     async saveVisualization(visObject) {
         const db = await this._getDB();
         return db.put(STORE_NAME, visObject);
     }
-    
+
     async getHistoryList() {
         const db = await this._getDB();
         const all = await db.getAllFromIndex(STORE_NAME, 'timestamp');
@@ -56,7 +56,7 @@ class VisualizationStore {
         });
         return historyList.reverse(); // Sort by most recent
     }
-    
+
     async deleteVisualization(id) {
         const db = await this._getDB();
         const numericId = Number(id);
@@ -67,7 +67,7 @@ class VisualizationStore {
         const db = await this._getDB();
         return db.clear(STORE_NAME);
     }
-    
+
     async updateName(id, newName) {
         const db = await this._getDB();
         const numericId = Number(id);
@@ -82,7 +82,7 @@ class VisualizationStore {
         }
         await tx.done;
     }
-    
+
     async importVisualizations(visArray) {
         const db = await this._getDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
